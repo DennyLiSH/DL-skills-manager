@@ -12,12 +12,6 @@ from dl_skills_manager.cli import main
 
 
 @pytest.fixture
-def cli_runner() -> CliRunner:
-    """Create a Click CLI test runner."""
-    return CliRunner()
-
-
-@pytest.fixture
 def project_with_skills(tmp_path: Path) -> Path:
     """Create a project with installed skills."""
     project = tmp_path / "my-project"

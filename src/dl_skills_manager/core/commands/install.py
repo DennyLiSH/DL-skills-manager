@@ -11,12 +11,10 @@ import click
 from dl_skills_manager.core.commands._shared import (
     find_skill_dir,
     find_version_dir,
+    install_skill_link,
     resolve_repo_path,
-    rollback_manifest_update,
 )
-from dl_skills_manager.core.exceptions import LinkError, ManifestError
-from dl_skills_manager.core.linker import create_link
-from dl_skills_manager.core.manifest import add_skill_to_manifest, read_project_manifest
+from dl_skills_manager.core.manifest import read_project_manifest
 
 
 @click.command()
@@ -56,24 +54,16 @@ def install(name: str, project: str, version: str | None, repo: str | None) -> N
     version_dir = find_version_dir(skill_dir, version)
     actual_version = version_dir.name
 
-    # Create symlink/copy in project
-    project_skill_link = project_path / ".claude" / "skills" / name
-
     # Check if skill was already installed to support proper rollback
     manifest = read_project_manifest(project_path)
     previous_entry = manifest.skills.get(name)
     previous_source = previous_entry.source if previous_entry else None
     previous_version = previous_entry.version if previous_entry else None
 
-    create_link(version_dir, project_skill_link, force=True)
+    # Create symlink/copy and update manifest with rollback on failure
+    install_skill_link(
+        project_path, name, skill_dir, version_dir, previous_source, previous_version
+    )
 
-    # Update manifest with rollback on failure
-    try:
-        add_skill_to_manifest(project_path, name, skill_dir, actual_version)
-    except (ManifestError, LinkError):
-        rollback_manifest_update(
-            project_path, name, project_skill_link, previous_source, previous_version
-        )
-        raise
-
+    project_skill_link = project_path / ".claude" / "skills" / name
     click.echo(f"Installed {name}@{actual_version} to {project_skill_link}")

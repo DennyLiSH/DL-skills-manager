@@ -18,7 +18,6 @@ from dl_skills_manager.core.exceptions import (
 )
 from dl_skills_manager.core.linker import create_link, is_link_valid, remove_link
 from dl_skills_manager.core.manifest import (
-    InstalledSkill,
     add_skill_to_manifest,
     ensure_project_manifest_dir,
     get_installed_skills,
@@ -27,6 +26,7 @@ from dl_skills_manager.core.manifest import (
     remove_skill_from_manifest,
     write_project_manifest,
 )
+from dl_skills_manager.core.types import InstalledSkill
 
 __all__ = [
     "AppError",

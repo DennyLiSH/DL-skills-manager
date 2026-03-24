@@ -13,12 +13,6 @@ from dl_skills_manager.cli import main
 
 
 @pytest.fixture
-def cli_runner() -> CliRunner:
-    """Create a Click CLI test runner."""
-    return CliRunner()
-
-
-@pytest.fixture
 def initialized_repo(tmp_path: Path) -> Path:
     """Create an initialized repository."""
     repo_path = tmp_path / ".skills-repo"
@@ -121,4 +115,4 @@ class TestCreateCommand:
         )
 
         output_lower = result.output.lower()
-        assert "not initialized" in output_lower or "error" in output_lower
+        assert "not initialized" in output_lower or "does not exist" in output_lower

@@ -6,6 +6,9 @@ repository path resolution, skill directory lookup, and version parsing.
 
 from __future__ import annotations
 
+import dataclasses
+import logging
+import os
 import tempfile
 from collections.abc import Mapping
 from contextlib import suppress
@@ -15,29 +18,33 @@ from pathlib import Path
 from tomllib import TOMLDecodeError
 from tomllib import load as load_toml
 
-import click
 import tomli_w
 from packaging.version import InvalidVersion, Version
 
 from dl_skills_manager.core.config import get_default_repo_path, load_repo_config
 from dl_skills_manager.core.exceptions import (
     ConfigError,
+    LinkError,
+    ManifestError,
     SkillNotFoundError,
     VersionNotFoundError,
     WriteError,
 )
-from dl_skills_manager.core.linker import remove_link
+from dl_skills_manager.core.linker import create_link, remove_link
 from dl_skills_manager.core.manifest import (
     add_skill_to_manifest,
     read_project_manifest,
     write_project_manifest,
 )
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
     "atomic_write_toml",
     "find_skill_dir",
     "find_version_dir",
     "format_version_date",
+    "install_skill_link",
     "resolve_repo_path",
     "rollback_manifest_update",
     "validate_skill_name",
@@ -94,19 +101,19 @@ def resolve_repo_path(repo: str | None) -> Path:
 
     Returns:
         Resolved repository path.
+
+    Raises:
+        ConfigError: If the repository path does not exist.
     """
     repo_path = Path(repo).expanduser().resolve() if repo else get_default_repo_path()
 
     try:
         config = load_repo_config(repo_path)
         return config.path
-    except ConfigError as e:
-        click.echo(
-            f"Warning: {repo_path} is not a valid repository config, using path as-is",
-            err=True,
-        )
+    except ConfigError:
         if not repo_path.exists():
-            raise ConfigError(f"Repository path does not exist: {repo_path}") from e
+            raise ConfigError(f"Repository path does not exist: {repo_path}") from None
+        # Path exists but config is invalid - use path as-is
         return repo_path
 
 
@@ -187,8 +194,10 @@ def find_version_dir(skill_dir: Path, version: str | None = None) -> Path:
                         if candidate.exists():
                             return candidate
             except TOMLDecodeError:
-                # Malformed skill.yaml, skip and fall back to version directory
-                pass
+                logger.warning(
+                    "Malformed skill.yaml in %s, falling back to version directory",
+                    skill_dir,
+                )
 
         # Fall back to any version
         version_dirs = [
@@ -229,7 +238,7 @@ def atomic_write_toml(path: Path, data: Mapping[str, object]) -> None:
         ) as tmp:
             tomli_w.dump(dump_data, tmp)
             tmp_path = Path(tmp.name)
-        tmp_path.replace(path)
+        os.replace(tmp_path, path)
     except OSError as e:
         raise WriteError(f"Failed to write {path}") from e
     finally:
@@ -248,7 +257,7 @@ def _dataclass_to_dict(data: object) -> dict[str, object]:
     Returns:
         A dictionary representation of the dataclass.
     """
-    import dataclasses
+    # asdict expects DataclassInstance; is_dataclass check above ensures this
     result: dict[str, object] = dataclasses.asdict(data)  # type: ignore[call-overload]
     return result
 
@@ -282,3 +291,41 @@ def rollback_manifest_update(
         if name in manifest.skills:
             del manifest.skills[name]
             write_project_manifest(project_path, manifest)
+
+
+def install_skill_link(
+    project_path: Path,
+    name: str,
+    skill_dir: Path,
+    version_dir: Path,
+    previous_source: str | None,
+    previous_version: str | None,
+) -> None:
+    """Create a skill link and update manifest with rollback on failure.
+
+    This is a shared implementation for both install and update commands.
+
+    Args:
+        project_path: Path to the project.
+        name: Skill name.
+        skill_dir: Path to the skill directory in the repo.
+        version_dir: Path to the version directory to link.
+        previous_source: Previous source path for rollback, or None.
+        previous_version: Previous version for rollback, or None.
+
+    Raises:
+        LinkError: If link creation fails.
+        ManifestError: If manifest update fails.
+    """
+    project_skill_link = project_path / ".claude" / "skills" / name
+    actual_version = version_dir.name
+
+    create_link(version_dir, project_skill_link, force=True)
+
+    try:
+        add_skill_to_manifest(project_path, name, skill_dir, actual_version)
+    except (ManifestError, LinkError):
+        rollback_manifest_update(
+            project_path, name, project_skill_link, previous_source, previous_version
+        )
+        raise

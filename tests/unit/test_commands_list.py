@@ -13,12 +13,6 @@ from dl_skills_manager.core.commands.list import list_skills
 
 
 @pytest.fixture
-def cli_runner() -> CliRunner:
-    """Create a Click CLI test runner."""
-    return CliRunner()
-
-
-@pytest.fixture
 def initialized_repo(tmp_path: Path) -> Path:
     """Create an initialized repository with some skills."""
     repo_path = tmp_path / ".skills-repo"

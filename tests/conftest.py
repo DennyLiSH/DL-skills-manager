@@ -9,12 +9,6 @@ from click.testing import CliRunner
 
 
 @pytest.fixture
-def project_dir(tmp_path: Path) -> Path:
-    """Create a temporary project directory."""
-    return tmp_path
-
-
-@pytest.fixture
 def skills_repo_dir(tmp_path: Path) -> Path:
     """Create a temporary skills repository directory."""
     repo_dir = tmp_path / ".skills-repo"

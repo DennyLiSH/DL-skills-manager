@@ -6,6 +6,8 @@ and on-demand linking to projects.
 
 from __future__ import annotations
 
+__all__ = ["main"]
+
 import logging
 import sys
 from functools import wraps

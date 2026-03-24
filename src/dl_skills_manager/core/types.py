@@ -5,9 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 __all__ = [
+    "InstalledSkill",
     "ProjectManifest",
     "SkillEntry",
     "SkillInfo",
+    "SkillMetadata",
     "SkillYamlData",
 ]
 
@@ -48,3 +50,26 @@ class SkillInfo:
     name: str
     description: str
     versions: int
+
+
+@dataclass(slots=True)
+class InstalledSkill:
+    """An installed skill entry."""
+
+    name: str
+    source: str
+    version: str
+
+
+@dataclass(slots=True)
+class SkillMetadata:
+    """Skill metadata from skill.yaml."""
+
+    name: str = ""
+    description: str = ""
+    version: str = ""
+    stable_version: str = ""
+    author: str = ""
+    created: str = ""
+    updated: str = ""
+    tags: list[str] = field(default_factory=list)

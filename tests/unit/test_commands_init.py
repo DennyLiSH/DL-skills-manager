@@ -10,12 +10,6 @@ from click.testing import CliRunner
 from dl_skills_manager.cli import main
 
 
-@pytest.fixture
-def cli_runner() -> CliRunner:
-    """Create a Click CLI test runner."""
-    return CliRunner()
-
-
 class TestInitCommand:
     """Tests for init command."""
 

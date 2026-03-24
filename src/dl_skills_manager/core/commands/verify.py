@@ -15,6 +15,7 @@ from dl_skills_manager.core.commands._shared import atomic_write_toml, resolve_r
 from dl_skills_manager.core.exceptions import (
     SkillNotFoundError,
     VersionNotFoundError,
+    WriteError,
 )
 from dl_skills_manager.core.types import SkillYamlData
 
@@ -87,7 +88,12 @@ def verify(name: str, repo: str | None) -> None:
     skill_data.version = stable_name
     skill_data.updated = today.isoformat()
 
-    # Atomic write using shared function
-    atomic_write_toml(skill_yaml_path, skill_data)  # type: ignore[arg-type]
+    # Atomic write using shared function with rollback on failure
+    try:
+        atomic_write_toml(skill_yaml_path, skill_data)  # type: ignore[arg-type]
+    except WriteError:
+        # Rollback: move stable back to dev
+        shutil.move(stable_dir, dev_dir)
+        raise
 
     click.echo(f"Promoted {name}@{dev_name} to stable {name}@{stable_name}")

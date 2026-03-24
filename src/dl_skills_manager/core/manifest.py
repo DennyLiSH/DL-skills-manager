@@ -7,8 +7,6 @@ which tracks installed skills and their sources.
 from __future__ import annotations
 
 __all__ = [
-    "InstalledSkill",
-    "SkillMetadata",
     "add_skill_to_manifest",
     "ensure_project_manifest_dir",
     "get_installed_skills",
@@ -22,7 +20,7 @@ import logging
 import sys
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
-from dataclasses import dataclass, field, is_dataclass
+from dataclasses import is_dataclass
 from pathlib import Path
 from tomllib import TOMLDecodeError
 from tomllib import load as load_toml
@@ -31,7 +29,11 @@ from typing import IO, Any
 import tomli_w
 
 from dl_skills_manager.core.exceptions import ManifestError
-from dl_skills_manager.core.types import ProjectManifest, SkillEntry
+from dl_skills_manager.core.types import (
+    InstalledSkill,
+    ProjectManifest,
+    SkillEntry,
+)
 
 PROJECT_MANIFEST_DIR = ".claude/skills"
 PROJECT_MANIFEST_FILE = "skills.toml"
@@ -150,29 +152,6 @@ def _locked_file(path: Path, mode: str) -> Generator[tuple[IO[Any], Path]]:
     finally:
         with suppress(OSError):
             lock_path.unlink()
-
-
-@dataclass(slots=True)
-class InstalledSkill:
-    """An installed skill entry."""
-
-    name: str
-    source: str
-    version: str
-
-
-@dataclass(slots=True)
-class SkillMetadata:
-    """Skill metadata from skill.yaml."""
-
-    name: str
-    description: str
-    version: str
-    stable_version: str
-    author: str
-    created: str
-    updated: str
-    tags: list[str] = field(default_factory=list)
 
 
 def get_project_manifest_path(project_dir: Path) -> Path:

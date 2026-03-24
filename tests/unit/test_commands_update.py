@@ -12,12 +12,6 @@ from dl_skills_manager.cli import main
 
 
 @pytest.fixture
-def cli_runner() -> CliRunner:
-    """Create a Click CLI test runner."""
-    return CliRunner()
-
-
-@pytest.fixture
 def repo_with_stable_and_dev(tmp_path: Path) -> Path:
     """Create a repository with both stable and dev versions."""
     repo_path = tmp_path / ".skills-repo"
