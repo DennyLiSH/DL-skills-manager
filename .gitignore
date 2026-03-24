@@ -1,4 +1,44 @@
-.claude/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# 虚拟环境
+.venv/
+venv/
+ENV/
+.env
+
+# 测试与覆盖
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# 类型检查
+.mypy_cache/
+.pytype/
+
+# Lint
+.ruff_cache/
+.ruff_output/
+
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+
+# 项目特定
+*.toml.lock
+
+# 锁文件
+uv.lock
+
+.claude/
 _*/
-CLAUDE.md
