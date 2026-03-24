@@ -70,7 +70,7 @@ def install(name: str, project: str, version: str | None, repo: str | None) -> N
     # Update manifest with rollback on failure
     try:
         add_skill_to_manifest(project_path, name, skill_dir, actual_version)
-    except (ManifestError, OSError, LinkError):
+    except (ManifestError, LinkError):
         rollback_manifest_update(
             project_path, name, project_skill_link, previous_source, previous_version
         )

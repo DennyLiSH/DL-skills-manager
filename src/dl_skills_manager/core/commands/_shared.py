@@ -25,6 +25,12 @@ from dl_skills_manager.core.exceptions import (
     VersionNotFoundError,
     WriteError,
 )
+from dl_skills_manager.core.linker import remove_link
+from dl_skills_manager.core.manifest import (
+    add_skill_to_manifest,
+    read_project_manifest,
+    write_project_manifest,
+)
 
 __all__ = [
     "atomic_write_toml",
@@ -33,6 +39,7 @@ __all__ = [
     "format_version_date",
     "resolve_repo_path",
     "rollback_manifest_update",
+    "validate_skill_name",
 ]
 
 
@@ -102,6 +109,21 @@ def resolve_repo_path(repo: str | None) -> Path:
         return repo_path
 
 
+def validate_skill_name(name: str) -> None:
+    """Validate skill name format.
+
+    Args:
+        name: Skill name to validate.
+
+    Raises:
+        ValueError: If skill name contains invalid characters or patterns.
+    """
+    if not all(c.isalnum() or c in "-_" for c in name):
+        raise ValueError("Skill name must be alphanumeric, hyphens, or underscores")
+    if ".." in name or name.startswith(("~", "/", "\\", "$")):
+        raise ValueError(f"Invalid skill name: {name}")
+
+
 def find_skill_dir(repo_path: Path, name: str) -> Path:
     """Find skill directory in repository.
 
@@ -117,8 +139,7 @@ def find_skill_dir(repo_path: Path, name: str) -> Path:
         ValueError: If skill name contains path traversal attempts.
     """
     # Validate skill name to prevent path traversal and ensure format consistency
-    if not all(c.isalnum() or c in "-_" for c in name):
-        raise ValueError(f"Invalid skill name: {name}")
+    validate_skill_name(name)
     skill_dir = repo_path / "skills" / name
     # Verify the resolved path is still within the skills directory
     skills_base = (repo_path / "skills").resolve()
@@ -232,13 +253,6 @@ def rollback_manifest_update(
         previous_source: Previous source path as string, or None.
         previous_version: Previous version string, or None.
     """
-    from dl_skills_manager.core.linker import remove_link
-    from dl_skills_manager.core.manifest import (
-        add_skill_to_manifest,
-        read_project_manifest,
-        write_project_manifest,
-    )
-
     remove_link(project_skill_link)
     if previous_source and previous_version:
         add_skill_to_manifest(
@@ -249,6 +263,4 @@ def rollback_manifest_update(
         manifest = read_project_manifest(project_path)
         if name in manifest["skills"]:
             del manifest["skills"][name]
-            from dl_skills_manager.core.manifest import write_project_manifest
-
             write_project_manifest(project_path, manifest)

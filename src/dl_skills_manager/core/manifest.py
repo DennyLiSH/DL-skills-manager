@@ -38,6 +38,28 @@ if TYPE_CHECKING:
 PROJECT_MANIFEST_DIR = ".claude/skills"
 PROJECT_MANIFEST_FILE = "skills.toml"
 
+logger = logging.getLogger(__name__)
+
+
+def _validate_project_dir(project_dir: Path) -> Path:
+    """Validate project directory exists and is a directory.
+
+    Args:
+        project_dir: Path to the project.
+
+    Returns:
+        Resolved project directory path.
+
+    Raises:
+        ValueError: If project_dir is not a valid directory.
+    """
+    resolved = project_dir.resolve()
+    if not resolved.exists():
+        raise ValueError(f"Project directory does not exist: {project_dir}")
+    if not resolved.is_dir():
+        raise ValueError(f"Project path is not a directory: {project_dir}")
+    return resolved
+
 
 def _lock_file_windows(
     lock_path: Path, path: Path, mode: str
@@ -167,12 +189,7 @@ def get_project_manifest_path(project_dir: Path) -> Path:
     Raises:
         ValueError: If project_dir is not a valid directory.
     """
-    # Validate project_dir is a directory
-    resolved = project_dir.resolve()
-    if not resolved.exists():
-        raise ValueError(f"Project directory does not exist: {project_dir}")
-    if not resolved.is_dir():
-        raise ValueError(f"Project path is not a directory: {project_dir}")
+    _validate_project_dir(project_dir)
     return project_dir / PROJECT_MANIFEST_DIR / PROJECT_MANIFEST_FILE
 
 
@@ -188,12 +205,7 @@ def ensure_project_manifest_dir(project_dir: Path) -> Path:
     Raises:
         ValueError: If project_dir is not a valid directory.
     """
-    # Validate project_dir is a directory
-    resolved = project_dir.resolve()
-    if not resolved.exists():
-        raise ValueError(f"Project directory does not exist: {project_dir}")
-    if not resolved.is_dir():
-        raise ValueError(f"Project path is not a directory: {project_dir}")
+    _validate_project_dir(project_dir)
     manifest_dir = project_dir / PROJECT_MANIFEST_DIR
     manifest_dir.mkdir(parents=True, exist_ok=True)
     return manifest_dir
@@ -256,8 +268,6 @@ def get_installed_skills(project_dir: Path) -> list[InstalledSkill]:
     """
     manifest = read_project_manifest(project_dir)
     skills: list[InstalledSkill] = []
-
-    logger = logging.getLogger(__name__)
 
     for name, data in manifest["skills"].items():
         if not isinstance(data, dict):

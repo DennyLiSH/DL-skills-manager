@@ -14,6 +14,7 @@ from dl_skills_manager.core.exceptions import (
     SkillAlreadyInstalledError,
     SkillNotFoundError,
     VersionNotFoundError,
+    WriteError,
 )
 from dl_skills_manager.core.linker import create_link, is_link_valid, remove_link
 from dl_skills_manager.core.manifest import (
@@ -38,6 +39,7 @@ __all__ = [
     "SkillAlreadyInstalledError",
     "SkillNotFoundError",
     "VersionNotFoundError",
+    "WriteError",
     "add_skill_to_manifest",
     "create_link",
     "ensure_project_manifest_dir",
