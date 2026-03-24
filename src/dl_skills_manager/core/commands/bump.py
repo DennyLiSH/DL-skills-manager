@@ -74,14 +74,24 @@ def bump(name: str, repo: str | None) -> None:
     skill_data: SkillYamlData
     if skill_yaml_path.exists():
         with skill_yaml_path.open("rb") as f:
-            skill_data = load_toml(f)  # type: ignore[assignment]
+            data = load_toml(f)
+            skill_data = SkillYamlData(
+                name=data.get("name", ""),
+                description=data.get("description", ""),
+                version=data.get("version", ""),
+                stable_version=data.get("stable_version", ""),
+                author=data.get("author", ""),
+                tags=data.get("tags", []),
+                created=data.get("created", ""),
+                updated=data.get("updated", ""),
+            )
     else:
         skill_data = SkillYamlData()
 
-    skill_data["version"] = version_str
-    skill_data["updated"] = today.isoformat()
+    skill_data.version = version_str
+    skill_data.updated = today.isoformat()
 
     # Atomic write using shared function
-    atomic_write_toml(skill_yaml_path, skill_data)
+    atomic_write_toml(skill_yaml_path, skill_data)  # type: ignore[arg-type]
 
     click.echo(f"Created new dev version: {name}@{version_str}")

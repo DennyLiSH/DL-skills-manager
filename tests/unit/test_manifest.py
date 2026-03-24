@@ -39,10 +39,10 @@ class TestEnsureProjectManifestDir:
 class TestReadProjectManifest:
     """Tests for read_project_manifest function."""
 
-    def test_returns_empty_dict_when_missing(self, tmp_path: Path) -> None:
+    def test_returns_empty_manifest_when_missing(self, tmp_path: Path) -> None:
         """Test returns empty manifest when manifest doesn't exist."""
         result = read_project_manifest(tmp_path)
-        assert result == {"skills": {}}
+        assert result.skills == {}
 
     def test_reads_existing_manifest(self, tmp_path: Path) -> None:
         """Test reading an existing manifest."""
@@ -57,8 +57,8 @@ version = "2026.03.23"
 
         result = read_project_manifest(tmp_path)
 
-        assert "code-review" in result["skills"]
-        assert result["skills"]["code-review"]["version"] == "2026.03.23"
+        assert "code-review" in result.skills
+        assert result.skills["code-review"].version == "2026.03.23"
 
 
 class TestWriteProjectManifest:
@@ -90,8 +90,8 @@ class TestWriteProjectManifest:
         write_project_manifest(tmp_path, new_manifest)
 
         result = read_project_manifest(tmp_path)
-        assert "old" not in result["skills"]
-        assert "new-skill" in result["skills"]
+        assert "old" not in result.skills
+        assert "new-skill" in result.skills
 
 
 class TestGetInstalledSkills:

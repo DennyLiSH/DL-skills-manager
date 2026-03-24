@@ -9,6 +9,7 @@ from __future__ import annotations
 import tempfile
 from collections.abc import Mapping
 from contextlib import suppress
+from dataclasses import is_dataclass
 from datetime import date
 from pathlib import Path
 from tomllib import TOMLDecodeError
@@ -118,10 +119,11 @@ def validate_skill_name(name: str) -> None:
     Raises:
         ValueError: If skill name contains invalid characters or patterns.
     """
-    if not all(c.isalnum() or c in "-_" for c in name):
-        raise ValueError("Skill name must be alphanumeric, hyphens, or underscores")
+    # Check path traversal patterns first for proper error messages
     if ".." in name or name.startswith(("~", "/", "\\", "$")):
         raise ValueError(f"Invalid skill name: {name}")
+    if not all(c.isalnum() or c in "-_" for c in name):
+        raise ValueError("Skill name must be alphanumeric, hyphens, or underscores")
 
 
 def find_skill_dir(repo_path: Path, name: str) -> Path:
@@ -213,17 +215,19 @@ def atomic_write_toml(path: Path, data: Mapping[str, object]) -> None:
 
     Args:
         path: Target file path.
-        data: Dictionary to write as TOML.
+        data: Dictionary or dataclass to write as TOML.
 
     Raises:
         WriteError: If the write operation fails.
     """
     tmp_path: Path | None = None
     try:
+        # Convert dataclass to dict if needed
+        dump_data = _dataclass_to_dict(data) if is_dataclass(data) else data
         with tempfile.NamedTemporaryFile(
             mode="wb", suffix=".toml", dir=path.parent, delete=False
         ) as tmp:
-            tomli_w.dump(data, tmp)
+            tomli_w.dump(dump_data, tmp)
             tmp_path = Path(tmp.name)
         tmp_path.replace(path)
     except OSError as e:
@@ -233,6 +237,20 @@ def atomic_write_toml(path: Path, data: Mapping[str, object]) -> None:
         if tmp_path is not None and tmp_path.exists():
             with suppress(OSError):
                 tmp_path.unlink()
+
+
+def _dataclass_to_dict(data: object) -> dict[str, object]:
+    """Convert a dataclass to a dictionary for TOML serialization.
+
+    Args:
+        data: A dataclass instance.
+
+    Returns:
+        A dictionary representation of the dataclass.
+    """
+    import dataclasses
+    result: dict[str, object] = dataclasses.asdict(data)  # type: ignore[call-overload]
+    return result
 
 
 def rollback_manifest_update(
@@ -261,6 +279,6 @@ def rollback_manifest_update(
     else:
         # No previous installation, remove from manifest entirely
         manifest = read_project_manifest(project_path)
-        if name in manifest["skills"]:
-            del manifest["skills"][name]
+        if name in manifest.skills:
+            del manifest.skills[name]
             write_project_manifest(project_path, manifest)

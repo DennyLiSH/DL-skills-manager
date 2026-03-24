@@ -47,9 +47,9 @@ def update(name: str, project: str, repo: str | None) -> None:
 
     # Check current installed version and save for rollback
     manifest = read_project_manifest(project_path)
-    skill_entry = manifest["skills"].get(name)
-    current_version = skill_entry.get("version") if skill_entry else None
-    current_source = skill_entry.get("source") if skill_entry else None
+    skill_entry = manifest.skills.get(name)
+    current_version = skill_entry.version if skill_entry else None
+    current_source = skill_entry.source if skill_entry else None
 
     if current_version == actual_version:
         click.echo(f"{name} is already at the latest version ({actual_version})")

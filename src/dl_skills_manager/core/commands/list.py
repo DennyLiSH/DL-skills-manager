@@ -7,15 +7,12 @@ __all__ = ["list_cmd", "list_skills"]
 from pathlib import Path
 from tomllib import TOMLDecodeError
 from tomllib import load as load_toml
-from typing import TYPE_CHECKING
 
 import click
 
 from dl_skills_manager.core.commands._shared import resolve_repo_path
 from dl_skills_manager.core.config import get_default_repo_path
-
-if TYPE_CHECKING:
-    from dl_skills_manager.core.types import SkillInfo
+from dl_skills_manager.core.types import SkillInfo
 
 
 def list_skills(
@@ -65,11 +62,11 @@ def list_skills(
                 warnings.append(f"Skipping malformed {skill_yaml}")
 
         skills.append(
-            {
-                "name": skill_name,
-                "description": description,
-                "versions": version_count,
-            }
+            SkillInfo(
+                name=skill_name,
+                description=description,
+                versions=version_count,
+            )
         )
 
     return skills, warnings
@@ -99,8 +96,8 @@ def list_cmd(repo: str | None) -> None:
     click.echo("")
 
     for skill in skills:
-        version_count = skill["versions"]
+        version_count = skill.versions
         version_label = f"({version_count} version{'s' if version_count != 1 else ''})"
-        click.echo(f"  {skill['name']} {version_label}")
-        if skill["description"]:
-            click.echo(f"    {skill['description']}")
+        click.echo(f"  {skill.name} {version_label}")
+        if skill.description:
+            click.echo(f"    {skill.description}")

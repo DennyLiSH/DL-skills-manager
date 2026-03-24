@@ -61,9 +61,9 @@ def install(name: str, project: str, version: str | None, repo: str | None) -> N
 
     # Check if skill was already installed to support proper rollback
     manifest = read_project_manifest(project_path)
-    previous_entry = manifest["skills"].get(name)
-    previous_source = previous_entry.get("source") if previous_entry else None
-    previous_version = previous_entry.get("version") if previous_entry else None
+    previous_entry = manifest.skills.get(name)
+    previous_source = previous_entry.source if previous_entry else None
+    previous_version = previous_entry.version if previous_entry else None
 
     create_link(version_dir, project_skill_link, force=True)
 

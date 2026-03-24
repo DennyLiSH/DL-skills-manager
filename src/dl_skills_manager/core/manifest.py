@@ -22,18 +22,16 @@ import logging
 import sys
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, is_dataclass
 from pathlib import Path
 from tomllib import TOMLDecodeError
 from tomllib import load as load_toml
-from typing import IO, TYPE_CHECKING, Any
+from typing import IO, Any
 
 import tomli_w
 
 from dl_skills_manager.core.exceptions import ManifestError
-
-if TYPE_CHECKING:
-    from dl_skills_manager.core.types import ProjectManifest
+from dl_skills_manager.core.types import ProjectManifest, SkillEntry
 
 PROJECT_MANIFEST_DIR = ".claude/skills"
 PROJECT_MANIFEST_FILE = "skills.toml"
@@ -226,7 +224,7 @@ def read_project_manifest(project_dir: Path) -> ProjectManifest:
     manifest_path = get_project_manifest_path(project_dir)
 
     if not manifest_path.exists():
-        return {"skills": {}}
+        return ProjectManifest(skills={})
 
     try:
         with _locked_file(manifest_path, "rb") as (f, _lock_path):
@@ -234,15 +232,24 @@ def read_project_manifest(project_dir: Path) -> ProjectManifest:
     except TOMLDecodeError as e:
         raise ManifestError(f"Failed to parse {manifest_path}: {e}") from e
 
-    return {"skills": dict(data.get("skills", {}))}
+    skills: dict[str, SkillEntry] = {}
+    for name, entry in data.get("skills", {}).items():
+        if isinstance(entry, dict):
+            skills[name] = SkillEntry(
+                source=entry.get("source", ""),
+                version=entry.get("version", ""),
+            )
+    return ProjectManifest(skills=skills)
 
 
-def write_project_manifest(project_dir: Path, manifest: ProjectManifest) -> None:
+def write_project_manifest(
+    project_dir: Path, manifest: ProjectManifest | dict[str, Any]
+) -> None:
     """Write the project's skills.toml manifest.
 
     Args:
         project_dir: Path to the project.
-        manifest: Manifest data to write.
+        manifest: Manifest data to write (ProjectManifest dataclass or dict).
 
     Raises:
         ManifestError: If the manifest cannot be written.
@@ -252,7 +259,14 @@ def write_project_manifest(project_dir: Path, manifest: ProjectManifest) -> None
 
     try:
         with _locked_file(manifest_path, "wb") as (f, _lock_path):
-            tomli_w.dump(manifest, f)
+            if is_dataclass(manifest):
+                skills_dict = {
+                    name: {"source": e.source, "version": e.version}
+                    for name, e in manifest.skills.items()
+                }
+            else:
+                skills_dict = dict(manifest.get("skills", {}).items())
+            tomli_w.dump({"skills": skills_dict}, f)
     except OSError as e:
         raise ManifestError(f"Failed to write manifest: {e}") from e
 
@@ -269,11 +283,8 @@ def get_installed_skills(project_dir: Path) -> list[InstalledSkill]:
     manifest = read_project_manifest(project_dir)
     skills: list[InstalledSkill] = []
 
-    for name, data in manifest["skills"].items():
-        if not isinstance(data, dict):
-            logger.warning("Skipping malformed entry for skill '%s' in manifest", name)
-            continue
-        source_str = data.get("source", "")
+    for name, data in manifest.skills.items():
+        source_str = data.source
         if not source_str:
             logger.warning(
                 "Skipping entry with empty source for skill '%s' in manifest", name
@@ -283,7 +294,7 @@ def get_installed_skills(project_dir: Path) -> list[InstalledSkill]:
             InstalledSkill(
                 name=name,
                 source=source_str,
-                version=data.get("version", ""),
+                version=data.version,
             )
         )
 
@@ -305,10 +316,10 @@ def add_skill_to_manifest(
         version: Version being installed.
     """
     manifest = read_project_manifest(project_dir)
-    manifest["skills"][skill_name] = {
-        "source": str(source),
-        "version": version,
-    }
+    manifest.skills[skill_name] = SkillEntry(
+        source=str(source),
+        version=version,
+    )
     write_project_manifest(project_dir, manifest)
 
 
@@ -320,6 +331,6 @@ def remove_skill_from_manifest(project_dir: Path, skill_name: str) -> None:
         skill_name: Name of the skill to remove.
     """
     manifest = read_project_manifest(project_dir)
-    if skill_name in manifest["skills"]:
-        del manifest["skills"][skill_name]
+    if skill_name in manifest.skills:
+        del manifest.skills[skill_name]
         write_project_manifest(project_dir, manifest)

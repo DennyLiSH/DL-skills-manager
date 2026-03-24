@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from functools import wraps
 
 import click
 
@@ -24,46 +25,30 @@ from dl_skills_manager.core.commands.versions import versions
 from dl_skills_manager.core.exceptions import AppError
 
 
-class ErrorHandlingCommand(click.Command):
-    """A Click Command that wraps AppError exceptions for proper error display."""
-
-    def invoke(self, ctx: click.Context) -> None:
-        """Invoke the command with error handling for AppError exceptions."""
-        try:
-            super().invoke(ctx)
-        except AppError as e:
-            error_type = type(e).__name__
-            click.secho(f"[{error_type}] {e}", fg="red", err=True)
-            raise SystemExit(1) from e
-
-
-def _make_error_handling_cmd(cmd: click.Command) -> ErrorHandlingCommand:
-    """Wrap a click Command to handle AppError exceptions.
+def _handle_app_errors(cmd: click.Command) -> click.Command:
+    """Decorator to wrap a click Command with AppError exception handling.
 
     Args:
         cmd: The command to wrap.
 
     Returns:
-        An ErrorHandlingCommand instance with the same settings.
+        The wrapped command.
     """
-    wrapped = ErrorHandlingCommand(
-        name=cmd.name or "unknown",
-        context_settings=cmd.context_settings,
-        callback=cmd.callback,
-        help=cmd.help,
-        epilog=cmd.epilog,
-        short_help=cmd.short_help,
-        options_metavar=cmd.options_metavar,
-        add_help_option=cmd.add_help_option,
-        no_args_is_help=cmd.no_args_is_help,
-        hidden=cmd.hidden,
-        deprecated=cmd.deprecated,
-    )
-    # Copy over the params from original command
-    for param in cmd.params:
-        if param.name not in ("help",):
-            wrapped.params.append(param)
-    return wrapped
+    original_callback = cmd.callback
+
+    @wraps(cmd)
+    def wrapper(*args: object, **kwargs: object) -> object:
+        try:
+            if original_callback is not None:
+                return original_callback(*args, **kwargs)
+            raise RuntimeError("Command has no callback")
+        except AppError as e:
+            error_type = type(e).__name__
+            click.secho(f"[{error_type}] {e}", fg="red", err=True)
+            raise SystemExit(1) from e
+
+    cmd.callback = wrapper
+    return cmd
 
 
 @click.group()
@@ -81,16 +66,16 @@ def main() -> None:
 
 
 # Register commands with error handling
-main.add_command(_make_error_handling_cmd(init))
-main.add_command(_make_error_handling_cmd(list_skills), name="list")
-main.add_command(_make_error_handling_cmd(create))
-main.add_command(_make_error_handling_cmd(install))
-main.add_command(_make_error_handling_cmd(remove))
-main.add_command(_make_error_handling_cmd(update))
-main.add_command(_make_error_handling_cmd(bump))
-main.add_command(_make_error_handling_cmd(verify))
-main.add_command(_make_error_handling_cmd(versions))
-main.add_command(_make_error_handling_cmd(status))
+main.add_command(_handle_app_errors(init))
+main.add_command(_handle_app_errors(list_skills), name="list")
+main.add_command(_handle_app_errors(create))
+main.add_command(_handle_app_errors(install))
+main.add_command(_handle_app_errors(remove))
+main.add_command(_handle_app_errors(update))
+main.add_command(_handle_app_errors(bump))
+main.add_command(_handle_app_errors(verify))
+main.add_command(_handle_app_errors(versions))
+main.add_command(_handle_app_errors(status))
 
 
 if __name__ == "__main__":
