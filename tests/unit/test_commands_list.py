@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import tomli_w
-from click.testing import CliRunner
 
 from dl_skills_manager.cli import main
 from dl_skills_manager.core.commands.list import list_skills
+
+if TYPE_CHECKING:
+    from click.testing import CliRunner
 
 
 @pytest.fixture

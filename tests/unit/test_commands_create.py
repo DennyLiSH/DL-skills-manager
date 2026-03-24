@@ -4,12 +4,15 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import tomli_w
-from click.testing import CliRunner
 
 from dl_skills_manager.cli import main
+
+if TYPE_CHECKING:
+    from click.testing import CliRunner
 
 
 @pytest.fixture
