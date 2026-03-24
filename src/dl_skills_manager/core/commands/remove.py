@@ -6,7 +6,6 @@ from pathlib import Path
 
 import click
 
-from dl_skills_manager.core.exceptions import LinkError
 from dl_skills_manager.core.linker import remove_link
 from dl_skills_manager.core.manifest import remove_skill_from_manifest
 
@@ -35,9 +34,6 @@ def remove(name: str, project: str) -> None:
     remove_skill_from_manifest(project_path, name)
 
     # Then remove the link
-    try:
-        remove_link(project_skill_path)
-    except LinkError:
-        raise
+    remove_link(project_skill_path)
 
     click.echo(f"Removed {name} from project.")

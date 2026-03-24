@@ -77,7 +77,7 @@ class TestResolveRepoPath:
     def test_resolve_repo_path_with_existing_non_config_dir(
         self, tmp_path: Path
     ) -> None:
-        """Test that existing non-config directory is returned with warning."""
+        """Test that existing directory without config raises ConfigError."""
         existing_dir = tmp_path / "existing-repo"
         existing_dir.mkdir()
 
@@ -85,8 +85,8 @@ class TestResolveRepoPath:
             "dl_skills_manager.core.commands._shared.load_repo_config",
             side_effect=ConfigError("Not a config"),
         ):
-            result = resolve_repo_path(str(existing_dir))
-            assert result == existing_dir
+            with pytest.raises(ConfigError, match="not initialized"):
+                resolve_repo_path(str(existing_dir))
 
 
 class TestFindVersionDir:
