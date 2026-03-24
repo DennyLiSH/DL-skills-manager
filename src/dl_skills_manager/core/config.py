@@ -17,7 +17,7 @@ from typing import Literal
 
 from dl_skills_manager.core.exceptions import ConfigError
 
-type LinkMode = Literal["symlink", "hardlink", "copy"]
+type LinkMode = Literal["symlink", "copy"]
 
 
 @dataclass(slots=True)

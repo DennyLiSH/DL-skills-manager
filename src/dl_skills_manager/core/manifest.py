@@ -17,7 +17,6 @@ __all__ = [
 
 import errno
 import logging
-import msvcrt
 import sys
 import time
 from collections.abc import Generator
@@ -80,6 +79,8 @@ def _lock_file_windows(
     Raises:
         ManifestError: If lock cannot be acquired after retries.
     """
+    import msvcrt
+
     with open(lock_path, "ab+") as _lock_file:
         for _attempt in range(100):
             try:
