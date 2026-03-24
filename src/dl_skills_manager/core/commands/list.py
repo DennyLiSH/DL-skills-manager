@@ -80,7 +80,7 @@ def list_skills(
     "--repo",
     type=click.Path(),
     default=None,
-    help="Path to skills repository (default: ~/.skills-repo)",
+    help="Path to skills repository (default: ~/.skills-base)",
 )
 def list_cmd(repo: str | None) -> None:
     """List all available skills in the repository."""

@@ -18,7 +18,7 @@ from dl_skills_manager.core.exceptions import RepoAlreadyExistsError
     "--path",
     type=click.Path(),
     default=None,
-    help="Path to initialize repository (default: ~/.skills-repo)",
+    help="Path to initialize repository (default: ~/.skills-base)",
 )
 @click.option(
     "--link-mode",

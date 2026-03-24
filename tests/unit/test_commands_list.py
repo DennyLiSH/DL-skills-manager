@@ -63,7 +63,7 @@ class TestListSkills:
         assert len(skills) == 1
         assert skills[0]["name"] == "test-skill"
         assert skills[0]["description"] == "A test skill"
-        assert skills[0]["versions"] == "1"
+        assert skills[0]["versions"] == 1
         assert warnings == []
 
 

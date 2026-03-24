@@ -37,7 +37,7 @@ class TestGetDefaultRepoPath:
     def test_returns_path_with_tilde(self) -> None:
         """Test default path contains .skills-repo."""
         result = get_default_repo_path()
-        assert ".skills-repo" in str(result)
+        assert ".skills-base" in str(result)
 
 
 class TestCreateDefaultConfig:

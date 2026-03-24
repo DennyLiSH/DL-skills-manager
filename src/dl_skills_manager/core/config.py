@@ -41,7 +41,7 @@ def expand_path(path_str: str) -> Path:
 
 def get_default_repo_path() -> Path:
     """Get the default skills repository path."""
-    return expand_path("~/.skills-repo")
+    return expand_path("~/.skills-base")
 
 
 def load_repo_config(repo_path: Path | None = None) -> RepoConfig:

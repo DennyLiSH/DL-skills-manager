@@ -25,7 +25,7 @@ dependencies = [
 ]
 
 [project.scripts]
-skill = "dl_skills_manager.cli:main"
+skill-sync = "dl_skills_manager.cli:main"
 
 [dependency-groups]
 dev = [
