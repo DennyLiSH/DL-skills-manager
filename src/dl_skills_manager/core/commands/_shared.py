@@ -263,6 +263,7 @@ def rollback_manifest_update(
     """Rollback a manifest update after a failed operation.
 
     Removes the created link and restores the previous installation state.
+    Errors during rollback are logged but do not mask the original error.
 
     Args:
         project_path: Path to the project.
@@ -272,23 +273,44 @@ def rollback_manifest_update(
         previous_version: Previous version string, or None.
         previous_link_target: Path to the previous link target, if any.
     """
+    rollback_errors: list[str] = []
+
     # Remove the new link
-    remove_link(project_skill_link)
+    try:
+        remove_link(project_skill_link)
+    except LinkError as e:
+        rollback_errors.append(f"Failed to remove link: {e}")
 
     # Restore the previous link if we have its target
     if previous_link_target is not None:
-        create_link(previous_link_target, project_skill_link, force=False)
+        try:
+            create_link(previous_link_target, project_skill_link, force=False)
+        except LinkError as e:
+            rollback_errors.append(f"Failed to restore previous link: {e}")
 
     if previous_source and previous_version:
-        add_skill_to_manifest(
-            project_path, name, Path(previous_source), previous_version
-        )
+        try:
+            add_skill_to_manifest(
+                project_path, name, Path(previous_source), previous_version
+            )
+        except ManifestError as e:
+            rollback_errors.append(f"Failed to restore manifest entry: {e}")
     else:
         # No previous installation, remove from manifest entirely
-        manifest = read_project_manifest(project_path)
-        if name in manifest.skills:
-            del manifest.skills[name]
-            write_project_manifest(project_path, manifest)
+        try:
+            manifest = read_project_manifest(project_path)
+            if name in manifest.skills:
+                del manifest.skills[name]
+                write_project_manifest(project_path, manifest)
+        except ManifestError as e:
+            rollback_errors.append(f"Failed to update manifest: {e}")
+
+    if rollback_errors:
+        logger.error(
+            "Rollback completed with errors for skill '%s': %s",
+            name,
+            "; ".join(rollback_errors),
+        )
 
 
 def install_skill_link(
@@ -336,7 +358,7 @@ def install_skill_link(
             source=str(skill_dir), version=actual_version
         )
         write_project_manifest(project_path, manifest)
-    except (ManifestError, LinkError):
+    except ManifestError, LinkError:
         rollback_manifest_update(
             project_path,
             name,

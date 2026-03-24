@@ -84,7 +84,7 @@ def create_link(source: Path, target: Path, *, force: bool = False) -> None:
     if not source.exists():
         raise LinkError(f"Source does not exist: {source}")
 
-    if target.exists() or target.is_symlink():
+    if target.is_symlink() or target.exists():
         if force:
             remove_link(target)
         else:
@@ -120,7 +120,7 @@ def remove_link(target: Path) -> None:
     Raises:
         LinkError: If the removal fails.
     """
-    if not target.exists() and not target.is_symlink():
+    if not target.is_symlink() and not target.exists():
         raise LinkError(f"Target does not exist: {target}")
 
     try:

@@ -17,6 +17,7 @@ __all__ = [
     "write_project_manifest",
 ]
 
+import errno
 import fcntl
 import logging
 import msvcrt
@@ -82,13 +83,18 @@ def _lock_file_windows(
     Raises:
         ManifestError: If lock cannot be acquired after retries.
     """
-    with open(lock_path, "wb+") as _lock_file:
+    with open(lock_path, "ab+") as _lock_file:
         for _attempt in range(100):
             try:
                 msvcrt.locking(_lock_file.fileno(), msvcrt.LK_NBLCK, 1)
                 break
-            except OSError:
-                time.sleep(0.01)
+            except OSError as e:
+                # Only retry on lock contention (EACCES on Windows)
+                # Other errors indicate a real problem, fail immediately
+                if e.errno == errno.EACCES:
+                    time.sleep(0.01)
+                else:
+                    raise
         else:
             msg = f"Could not acquire lock on {lock_path}"
             raise ManifestError(msg)
