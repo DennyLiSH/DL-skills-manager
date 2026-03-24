@@ -1,0 +1,283 @@
+"""Project skills manifest management.
+
+Handles reading and writing the project's skills.toml manifest file
+which tracks installed skills and their sources.
+"""
+
+from __future__ import annotations
+
+__all__ = [
+    "InstalledSkill",
+    "SkillMetadata",
+    "add_skill_to_manifest",
+    "ensure_project_manifest_dir",
+    "get_installed_skills",
+    "get_project_manifest_path",
+    "read_project_manifest",
+    "remove_skill_from_manifest",
+    "write_project_manifest",
+]
+
+import sys
+import warnings
+from collections.abc import Generator
+from contextlib import contextmanager, suppress
+from dataclasses import dataclass, field
+from pathlib import Path
+from tomllib import TOMLDecodeError
+from tomllib import load as load_toml
+from typing import IO, TYPE_CHECKING, Any
+
+import tomli_w
+
+from dl_skills_manager.core.exceptions import ManifestError
+
+if TYPE_CHECKING:
+    from dl_skills_manager.core.types import ProjectManifest
+
+PROJECT_MANIFEST_DIR = ".claude/skills"
+PROJECT_MANIFEST_FILE = "skills.toml"
+
+
+@contextmanager
+def _locked_file(path: Path, mode: str) -> Generator[tuple[IO[Any], Path]]:
+    """Context manager for file locking during read/write operations.
+
+    Uses fcntl on Unix and msvcrt on Windows for cross-platform support.
+    Lock files are cleaned up in the outer finally block after all operations complete.
+
+    Args:
+        path: Path to the file to lock.
+        mode: File mode ('r' or 'rb' for reading, 'w' or 'wb' for writing).
+
+    Yields:
+        A tuple of (file object, lock file path).
+
+    Raises:
+        ManifestError: If lock cannot be acquired after retries.
+    """
+    lock_path = path.with_suffix(".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if sys.platform == "win32":
+        import msvcrt
+
+        with open(lock_path, "wb+") as _lock_file:
+            # LK_NBLCK is non-blocking; we retry manually for robustness
+            for _attempt in range(100):  # 100 attempts max
+                try:
+                    msvcrt.locking(_lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+                    break  # Lock acquired
+                except OSError:
+                    # Lock is held by another process, small sleep and retry
+                    import time
+
+                    time.sleep(0.01)
+            else:
+                # Failed to acquire lock after retries
+                raise ManifestError(f"Could not acquire lock on {lock_path}")
+
+            try:
+                with path.open(mode) as f:
+                    yield f, lock_path
+            finally:
+                msvcrt.locking(_lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        import fcntl
+
+        with open(lock_path, "w") as _lock_file:
+            fcntl.flock(_lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                with path.open(mode) as f:
+                    yield f, lock_path
+            finally:
+                fcntl.flock(_lock_file.fileno(), fcntl.LOCK_UN)
+
+    # Clean up lock file after context exits
+    with suppress(OSError):
+        lock_path.unlink()
+
+
+@dataclass(slots=True)
+class InstalledSkill:
+    """An installed skill entry."""
+
+    name: str
+    source: Path
+    version: str
+
+
+@dataclass(slots=True)
+class SkillMetadata:
+    """Skill metadata from skill.yaml."""
+
+    name: str
+    description: str
+    version: str
+    stable_version: str
+    author: str
+    created: str
+    updated: str
+    tags: list[str] = field(default_factory=list)
+
+
+def get_project_manifest_path(project_dir: Path) -> Path:
+    """Get the path to the project's skills.toml.
+
+    Args:
+        project_dir: Path to the project.
+
+    Returns:
+        Path to the manifest file.
+
+    Raises:
+        ValueError: If project_dir is not a valid directory.
+    """
+    # Validate project_dir is a directory
+    resolved = project_dir.resolve()
+    if not resolved.exists():
+        raise ValueError(f"Project directory does not exist: {project_dir}")
+    if not resolved.is_dir():
+        raise ValueError(f"Project path is not a directory: {project_dir}")
+    return project_dir / PROJECT_MANIFEST_DIR / PROJECT_MANIFEST_FILE
+
+
+def ensure_project_manifest_dir(project_dir: Path) -> Path:
+    """Ensure the project manifest directory exists.
+
+    Args:
+        project_dir: Path to the project.
+
+    Returns:
+        Path to the manifest directory.
+
+    Raises:
+        ValueError: If project_dir is not a valid directory.
+    """
+    # Validate project_dir is a directory
+    resolved = project_dir.resolve()
+    if not resolved.exists():
+        raise ValueError(f"Project directory does not exist: {project_dir}")
+    if not resolved.is_dir():
+        raise ValueError(f"Project path is not a directory: {project_dir}")
+    manifest_dir = project_dir / PROJECT_MANIFEST_DIR
+    manifest_dir.mkdir(parents=True, exist_ok=True)
+    return manifest_dir
+
+
+def read_project_manifest(project_dir: Path) -> ProjectManifest:
+    """Read the project's skills.toml manifest.
+
+    Args:
+        project_dir: Path to the project.
+
+    Returns:
+        Project manifest structure.
+
+    Raises:
+        ManifestError: If the manifest cannot be read or parsed.
+    """
+    manifest_path = get_project_manifest_path(project_dir)
+
+    if not manifest_path.exists():
+        return {"skills": {}}
+
+    try:
+        with _locked_file(manifest_path, "rb") as (f, _lock_path):
+            data = load_toml(f)
+    except TOMLDecodeError as e:
+        raise ManifestError(f"Failed to parse {manifest_path}: {e}") from e
+
+    return {"skills": dict(data.get("skills", {}))}
+
+
+def write_project_manifest(project_dir: Path, manifest: ProjectManifest) -> None:
+    """Write the project's skills.toml manifest.
+
+    Args:
+        project_dir: Path to the project.
+        manifest: Manifest data to write.
+
+    Raises:
+        ManifestError: If the manifest cannot be written.
+    """
+    manifest_path = get_project_manifest_path(project_dir)
+    ensure_project_manifest_dir(project_dir)
+
+    try:
+        with _locked_file(manifest_path, "wb") as (f, _lock_path):
+            tomli_w.dump(manifest, f)
+    except OSError as e:
+        raise ManifestError(f"Failed to write manifest: {e}") from e
+
+
+def get_installed_skills(project_dir: Path) -> list[InstalledSkill]:
+    """Get list of installed skills in a project.
+
+    Args:
+        project_dir: Path to the project.
+
+    Returns:
+        List of InstalledSkill objects.
+    """
+    manifest = read_project_manifest(project_dir)
+    skills: list[InstalledSkill] = []
+
+    for name, data in manifest["skills"].items():
+        if not isinstance(data, dict):
+            warnings.warn(
+                f"Skipping malformed entry for skill '{name}' in manifest",
+                stacklevel=2,
+            )
+            continue
+        source_str = data.get("source", "")
+        if not source_str:
+            warnings.warn(
+                f"Skipping entry with empty source for skill '{name}' in manifest",
+                stacklevel=2,
+            )
+            continue
+        skills.append(
+            InstalledSkill(
+                name=name,
+                source=Path(source_str),
+                version=data.get("version", ""),
+            )
+        )
+
+    return skills
+
+
+def add_skill_to_manifest(
+    project_dir: Path,
+    skill_name: str,
+    source: Path,
+    version: str,
+) -> None:
+    """Add a skill to the project manifest.
+
+    Args:
+        project_dir: Path to the project.
+        skill_name: Name of the skill.
+        source: Source path in the repository.
+        version: Version being installed.
+    """
+    manifest = read_project_manifest(project_dir)
+    manifest["skills"][skill_name] = {
+        "source": str(source),
+        "version": version,
+    }
+    write_project_manifest(project_dir, manifest)
+
+
+def remove_skill_from_manifest(project_dir: Path, skill_name: str) -> None:
+    """Remove a skill from the project manifest.
+
+    Args:
+        project_dir: Path to the project.
+        skill_name: Name of the skill to remove.
+    """
+    manifest = read_project_manifest(project_dir)
+    if skill_name in manifest["skills"]:
+        del manifest["skills"][skill_name]
+        write_project_manifest(project_dir, manifest)

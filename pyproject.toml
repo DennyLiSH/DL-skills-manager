@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dl-skills-manager"
+version = "0.1.0"
+description = "Claude Code Skills Manager - Centralized skill repository with on-demand linking"
+requires-python = ">=3.14"
+license = {text = "MIT"}
+readme = "README.md"
+keywords = ["claude", "skills", "manager", "cli"]
+classifiers = [
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+authors = [
+    { name = "Your Name", email = "your.email@example.com" },
+]
+dependencies = [
+    "tomli-w>=1.0.0",
+    "click>=8.1.0",
+    "packaging>=24.0",
+]
+
+[project.scripts]
+skill = "dl_skills_manager.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "pytest-cov>=4.0.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+exclude = ["__pycache__", ".git", "build", "dist", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM", "TCH", "RUF", "B028"]
+# TC003: import missing from dependency groups - we use dependency-groups for dev tools
+ignore = ["TC003"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unused_configs = true
+warn_redundant_casts = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+minversion = "8.0"
+addopts = "-v --tb=short --cov=src"
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning",
+]
