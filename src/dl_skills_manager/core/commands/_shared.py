@@ -109,14 +109,14 @@ def resolve_repo_path(repo: str | None) -> Path:
     try:
         config = load_repo_config(repo_path)
         return config.path
-    except ConfigError:
+    except ConfigError as e:
         if not repo_path.exists():
-            raise ConfigError(f"Repository path does not exist: {repo_path}") from None
+            raise ConfigError(f"Repository path does not exist: {repo_path}") from e
         # Path exists but config.toml is missing - this is an error
         raise ConfigError(
             f"Repository at {repo_path} is not initialized. "
             "Run 'skill-sync init' first."
-        ) from None
+        ) from e
 
 
 def validate_skill_name(name: str) -> None:
@@ -153,8 +153,11 @@ def find_skill_dir(repo_path: Path, name: str) -> Path:
     validate_skill_name(name)
     skill_dir = repo_path / "skills" / name
     # Verify the resolved path is still within the skills directory
-    skills_base = (repo_path / "skills").resolve()
-    resolved_skill_dir = skill_dir.resolve()
+    try:
+        skills_base = (repo_path / "skills").resolve()
+        resolved_skill_dir = skill_dir.resolve()
+    except OSError as e:
+        raise ValueError(f"Could not resolve skill path: {skill_dir}") from e
     if not resolved_skill_dir.is_relative_to(skills_base):
         raise ValueError(f"Skill path escaped repository: {name}")
     if not skill_dir.exists():

@@ -38,8 +38,8 @@ from dl_skills_manager.core.types import (
     SkillYamlData,
 )
 
-PROJECT_MANIFEST_DIR = ".claude/skills"
-PROJECT_MANIFEST_FILE = "skills.toml"
+PROJECT_MANIFEST_DIR: Path = Path(".claude/skills")
+PROJECT_MANIFEST_FILE: str = "skills.toml"
 
 logger = logging.getLogger(__name__)
 

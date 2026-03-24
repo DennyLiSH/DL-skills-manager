@@ -14,8 +14,8 @@ from pathlib import Path
 from dl_skills_manager.core.exceptions import LinkError
 
 # Windows error codes for privilege/access issues
-_WINDOWS_ERROR_ACCESS_DENIED = 5
-_WINDOWS_ERROR_PRIVILEGE_NOT_HELD = 1314
+WINDOWS_ERROR_ACCESS_DENIED = 5
+WINDOWS_ERROR_PRIVILEGE_NOT_HELD = 1314
 
 
 def _is_permission_error(e: OSError) -> bool:
@@ -31,8 +31,8 @@ def _is_permission_error(e: OSError) -> bool:
     # Windows-specific: symlink privilege error (error codes stored in exception args)
     if sys.platform == "win32" and e.winerror is not None:
         return e.winerror in (
-            _WINDOWS_ERROR_ACCESS_DENIED,
-            _WINDOWS_ERROR_PRIVILEGE_NOT_HELD,
+            WINDOWS_ERROR_ACCESS_DENIED,
+            WINDOWS_ERROR_PRIVILEGE_NOT_HELD,
         )
     return False
 
