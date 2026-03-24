@@ -29,7 +29,7 @@ class ProjectManifest:
     skills: dict[str, SkillEntry] = field(default_factory=dict)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class SkillYamlData:
     """skill.yaml structure."""
 

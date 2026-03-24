@@ -4,6 +4,7 @@ from __future__ import annotations
 
 __all__ = ["bump"]
 
+from dataclasses import replace
 from datetime import date
 
 import click
@@ -72,10 +73,13 @@ def bump(name: str, repo: str | None) -> None:
 
     skill_data = read_skill_yaml(skill_dir)
 
-    skill_data.version = version_str
-    skill_data.updated = today.isoformat()
+    updated_data = replace(
+        skill_data,
+        version=version_str,
+        updated=today.isoformat(),
+    )
 
     # Atomic write using shared function
-    atomic_write_toml(skill_yaml_path, skill_data)  # type: ignore[arg-type]
+    atomic_write_toml(skill_yaml_path, updated_data)  # type: ignore[arg-type]
 
     click.echo(f"Created new dev version: {name}@{version_str}")

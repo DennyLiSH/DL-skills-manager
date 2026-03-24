@@ -11,6 +11,7 @@ __all__ = ["main"]
 import logging
 import sys
 from functools import wraps
+from typing import Any
 
 import click
 
@@ -39,7 +40,7 @@ def _handle_app_errors(cmd: click.Command) -> click.Command:
     original_callback = cmd.callback
 
     @wraps(cmd)
-    def wrapper(*args: object, **kwargs: object) -> object:
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             if original_callback is not None:
                 return original_callback(*args, **kwargs)

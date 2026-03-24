@@ -5,6 +5,7 @@ from __future__ import annotations
 __all__ = ["verify"]
 
 import shutil
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -68,13 +69,16 @@ def verify(name: str, repo: str | None) -> None:
 
     skill_data = read_skill_yaml(skill_dir)
 
-    skill_data.stable_version = stable_name
-    skill_data.version = stable_name
-    skill_data.updated = today.isoformat()
+    updated_data = replace(
+        skill_data,
+        stable_version=stable_name,
+        version=stable_name,
+        updated=today.isoformat(),
+    )
 
     # Atomic write using shared function with rollback on failure
     try:
-        atomic_write_toml(skill_yaml_path, skill_data)  # type: ignore[arg-type]
+        atomic_write_toml(skill_yaml_path, updated_data)  # type: ignore[arg-type]
     except WriteError:
         # Rollback: move stable back to dev
         shutil.move(stable_dir, dev_dir)
