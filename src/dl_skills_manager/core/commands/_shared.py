@@ -333,7 +333,7 @@ def install_skill_link(
             source=str(skill_dir), version=actual_version
         )
         write_project_manifest(project_path, manifest)
-    except ManifestError, LinkError:
+    except (ManifestError, LinkError):
         rollback_manifest_update(
             project_path,
             name,

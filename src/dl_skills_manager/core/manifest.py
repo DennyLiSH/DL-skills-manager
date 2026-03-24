@@ -17,8 +17,11 @@ __all__ = [
     "write_project_manifest",
 ]
 
+import fcntl
 import logging
+import msvcrt
 import sys
+import time
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from dataclasses import is_dataclass
@@ -79,9 +82,6 @@ def _lock_file_windows(
     Raises:
         ManifestError: If lock cannot be acquired after retries.
     """
-    import msvcrt
-    import time
-
     with open(lock_path, "wb+") as _lock_file:
         for _attempt in range(100):
             try:
@@ -113,8 +113,6 @@ def _lock_file_unix(
     Yields:
         A tuple of (file object, lock file path).
     """
-    import fcntl
-
     with open(lock_path, "w") as _lock_file:
         fcntl.flock(_lock_file.fileno(), fcntl.LOCK_EX)  # type: ignore[attr-defined]
         try:

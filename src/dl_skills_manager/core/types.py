@@ -9,7 +9,6 @@ __all__ = [
     "ProjectManifest",
     "SkillEntry",
     "SkillInfo",
-    "SkillMetadata",
     "SkillYamlData",
 ]
 
@@ -59,17 +58,3 @@ class InstalledSkill:
     name: str
     source: str
     version: str
-
-
-@dataclass(slots=True)
-class SkillMetadata:
-    """Skill metadata from skill.yaml."""
-
-    name: str = ""
-    description: str = ""
-    version: str = ""
-    stable_version: str = ""
-    author: str = ""
-    created: str = ""
-    updated: str = ""
-    tags: list[str] = field(default_factory=list)

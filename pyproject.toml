@@ -71,6 +71,18 @@ python_version = "3.14"
 strict = true
 warn_unused_configs = true
 warn_redundant_casts = true
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = "click.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tomli_w.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "packaging.*"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
