@@ -141,7 +141,10 @@ def is_link_valid(target: Path) -> bool:
     Returns:
         True if target is a valid symlink pointing to existing path,
         or if target is a directory containing a valid skill (has SKILL.md).
+        Returns False if target does not exist.
     """
+    if not target.exists():
+        return False
     if target.is_symlink():
         return target.resolve().exists()
     # For copied directories, verify it contains expected skill content

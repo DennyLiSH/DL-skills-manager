@@ -51,7 +51,7 @@ class SkillInfo:
     versions: int
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class InstalledSkill:
     """An installed skill entry."""
 

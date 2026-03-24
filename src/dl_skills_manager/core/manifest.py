@@ -150,6 +150,7 @@ def _locked_file(path: Path, mode: str) -> Generator[tuple[IO[Any], Path]]:
     try:
         yield from locker(lock_path, path, mode)
     finally:
+        # Ensure lock file is always cleaned up, even if operations fail
         with suppress(OSError):
             lock_path.unlink()
 

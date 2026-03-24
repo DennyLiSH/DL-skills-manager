@@ -104,7 +104,7 @@ def resolve_repo_path(repo: str | None) -> Path:
         Resolved repository path.
 
     Raises:
-        ConfigError: If the repository path does not exist.
+        ConfigError: If the repository path does not exist or config.toml is missing.
     """
     repo_path = Path(repo).expanduser().resolve() if repo else get_default_repo_path()
 
@@ -114,8 +114,11 @@ def resolve_repo_path(repo: str | None) -> Path:
     except ConfigError:
         if not repo_path.exists():
             raise ConfigError(f"Repository path does not exist: {repo_path}") from None
-        # Path exists but config is invalid - use path as-is
-        return repo_path
+        # Path exists but config.toml is missing - this is an error
+        raise ConfigError(
+            f"Repository at {repo_path} is not initialized. "
+            "Run 'skill-sync init' first."
+        ) from None
 
 
 def validate_skill_name(name: str) -> None:
