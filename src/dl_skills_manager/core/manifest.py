@@ -12,6 +12,7 @@ __all__ = [
     "get_installed_skills",
     "get_project_manifest_path",
     "read_project_manifest",
+    "read_skill_yaml",
     "remove_skill_from_manifest",
     "write_project_manifest",
 ]
@@ -33,6 +34,7 @@ from dl_skills_manager.core.types import (
     InstalledSkill,
     ProjectManifest,
     SkillEntry,
+    SkillYamlData,
 )
 
 PROJECT_MANIFEST_DIR = ".claude/skills"
@@ -315,3 +317,33 @@ def remove_skill_from_manifest(project_dir: Path, skill_name: str) -> None:
     if skill_name in manifest.skills:
         del manifest.skills[skill_name]
         write_project_manifest(project_dir, manifest)
+
+
+def read_skill_yaml(skill_dir: Path) -> SkillYamlData:
+    """Read skill.yaml from a skill directory.
+
+    Args:
+        skill_dir: Path to the skill directory (contains skill.yaml).
+
+    Returns:
+        SkillYamlData parsed from skill.yaml, or empty SkillYamlData if not found.
+    """
+    skill_yaml_path = skill_dir / "skill.yaml"
+    if not skill_yaml_path.exists():
+        return SkillYamlData()
+
+    try:
+        with skill_yaml_path.open("rb") as f:
+            data = load_toml(f)
+            return SkillYamlData(
+                name=data.get("name", ""),
+                description=data.get("description", ""),
+                version=data.get("version", ""),
+                stable_version=data.get("stable_version", ""),
+                author=data.get("author", ""),
+                tags=data.get("tags", []),
+                created=data.get("created", ""),
+                updated=data.get("updated", ""),
+            )
+    except TOMLDecodeError as e:
+        raise ManifestError(f"Failed to parse {skill_yaml_path}: {e}") from e

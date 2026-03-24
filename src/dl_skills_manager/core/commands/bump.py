@@ -5,7 +5,6 @@ from __future__ import annotations
 __all__ = ["bump"]
 
 from datetime import date
-from tomllib import load as load_toml
 
 import click
 
@@ -15,7 +14,7 @@ from dl_skills_manager.core.commands._shared import (
     resolve_repo_path,
 )
 from dl_skills_manager.core.exceptions import SkillNotFoundError
-from dl_skills_manager.core.types import SkillYamlData
+from dl_skills_manager.core.manifest import read_skill_yaml
 
 
 @click.command()
@@ -71,22 +70,7 @@ def bump(name: str, repo: str | None) -> None:
     # Update skill.yaml
     skill_yaml_path = skill_dir / "skill.yaml"
 
-    skill_data: SkillYamlData
-    if skill_yaml_path.exists():
-        with skill_yaml_path.open("rb") as f:
-            data = load_toml(f)
-            skill_data = SkillYamlData(
-                name=data.get("name", ""),
-                description=data.get("description", ""),
-                version=data.get("version", ""),
-                stable_version=data.get("stable_version", ""),
-                author=data.get("author", ""),
-                tags=data.get("tags", []),
-                created=data.get("created", ""),
-                updated=data.get("updated", ""),
-            )
-    else:
-        skill_data = SkillYamlData()
+    skill_data = read_skill_yaml(skill_dir)
 
     skill_data.version = version_str
     skill_data.updated = today.isoformat()

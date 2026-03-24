@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["list_cmd", "list_skills"]
+__all__ = ["list_skills", "list_skills_cmd"]
 
 from pathlib import Path
 from tomllib import TOMLDecodeError
@@ -79,7 +79,7 @@ def list_skills(
     default=None,
     help="Path to skills repository (default: ~/.skills-base)",
 )
-def list_cmd(repo: str | None) -> None:
+def list_skills_cmd(repo: str | None) -> None:
     """List all available skills in the repository."""
     repo_path = resolve_repo_path(repo)
 

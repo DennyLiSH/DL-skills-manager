@@ -133,14 +133,15 @@ def remove_link(target: Path) -> None:
 
 
 def is_link_valid(target: Path) -> bool:
-    """Check if a symlink points to a valid target.
+    """Check if a symlink points to a valid target or copied directory exists.
 
     Args:
         target: Path to check.
 
     Returns:
-        True if target is a valid symlink, False otherwise.
+        True if target is a valid symlink pointing to existing path,
+        or if target is a directory (created via copy fallback).
     """
-    if not target.is_symlink():
-        return False
-    return target.resolve().exists()
+    if target.is_symlink():
+        return target.resolve().exists()
+    return target.is_dir()

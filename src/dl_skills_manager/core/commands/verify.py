@@ -7,7 +7,6 @@ __all__ = ["verify"]
 import shutil
 from datetime import date
 from pathlib import Path
-from tomllib import load as load_toml
 
 import click
 
@@ -17,7 +16,7 @@ from dl_skills_manager.core.exceptions import (
     VersionNotFoundError,
     WriteError,
 )
-from dl_skills_manager.core.types import SkillYamlData
+from dl_skills_manager.core.manifest import read_skill_yaml
 
 
 @click.command()
@@ -67,22 +66,7 @@ def verify(name: str, repo: str | None) -> None:
     today = date.today()
     skill_yaml_path = skill_dir / "skill.yaml"
 
-    skill_data: SkillYamlData
-    if skill_yaml_path.exists():
-        with skill_yaml_path.open("rb") as f:
-            data = load_toml(f)
-            skill_data = SkillYamlData(
-                name=data.get("name", ""),
-                description=data.get("description", ""),
-                version=data.get("version", ""),
-                stable_version=data.get("stable_version", ""),
-                author=data.get("author", ""),
-                tags=data.get("tags", []),
-                created=data.get("created", ""),
-                updated=data.get("updated", ""),
-            )
-    else:
-        skill_data = SkillYamlData()
+    skill_data = read_skill_yaml(skill_dir)
 
     skill_data.stable_version = stable_name
     skill_data.version = stable_name
