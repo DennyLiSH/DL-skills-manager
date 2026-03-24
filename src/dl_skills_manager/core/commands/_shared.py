@@ -32,6 +32,7 @@ __all__ = [
     "find_version_dir",
     "format_version_date",
     "resolve_repo_path",
+    "rollback_manifest_update",
 ]
 
 
@@ -211,3 +212,43 @@ def atomic_write_toml(path: Path, data: Mapping[str, object]) -> None:
         if tmp_path is not None and tmp_path.exists():
             with suppress(OSError):
                 tmp_path.unlink()
+
+
+def rollback_manifest_update(
+    project_path: Path,
+    name: str,
+    project_skill_link: Path,
+    previous_source: str | None,
+    previous_version: str | None,
+) -> None:
+    """Rollback a manifest update after a failed operation.
+
+    Removes the created link and restores the previous installation state.
+
+    Args:
+        project_path: Path to the project.
+        name: Skill name.
+        project_skill_link: Path to the created link/directory.
+        previous_source: Previous source path as string, or None.
+        previous_version: Previous version string, or None.
+    """
+    from dl_skills_manager.core.linker import remove_link
+    from dl_skills_manager.core.manifest import (
+        add_skill_to_manifest,
+        read_project_manifest,
+        write_project_manifest,
+    )
+
+    remove_link(project_skill_link)
+    if previous_source and previous_version:
+        add_skill_to_manifest(
+            project_path, name, Path(previous_source), previous_version
+        )
+    else:
+        # No previous installation, remove from manifest entirely
+        manifest = read_project_manifest(project_path)
+        if name in manifest["skills"]:
+            del manifest["skills"][name]
+            from dl_skills_manager.core.manifest import write_project_manifest
+
+            write_project_manifest(project_path, manifest)

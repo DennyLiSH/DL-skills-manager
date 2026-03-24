@@ -49,7 +49,14 @@ def create(name: str, description: str, repo: str | None) -> None:
     # Validate skill name
     if not name or not name.strip():
         raise ValidationError("Skill name cannot be empty")
-    if ".." in name or name.startswith("/") or name.startswith("\\"):
+    if (
+        ".." in name
+        or name.startswith("/")
+        or name.startswith("\\")
+        or name.startswith("~")
+    ):
+        raise ValidationError(f"Invalid skill name: {name}")
+    if "$" in name:
         raise ValidationError(f"Invalid skill name: {name}")
     if not all(c.isalnum() or c in "-_" for c in name):
         raise ValidationError(

@@ -11,11 +11,14 @@ from dl_skills_manager.core.exceptions import (
     ConfigError,
     LinkError,
     ManifestError,
+    RepoAlreadyExistsError,
+    RepoNotInitializedError,
     SkillAlreadyExistsError,
     SkillAlreadyInstalledError,
     SkillNotFoundError,
     ValidationError,
     VersionNotFoundError,
+    WriteError,
 )
 
 __all__ = [
@@ -23,11 +26,14 @@ __all__ = [
     "ConfigError",
     "LinkError",
     "ManifestError",
+    "RepoAlreadyExistsError",
+    "RepoNotInitializedError",
     "SkillAlreadyExistsError",
     "SkillAlreadyInstalledError",
     "SkillNotFoundError",
     "ValidationError",
     "VersionNotFoundError",
+    "WriteError",
     "main",
 ]
 

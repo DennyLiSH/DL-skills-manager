@@ -18,8 +18,8 @@ __all__ = [
     "write_project_manifest",
 ]
 
+import logging
 import sys
-import warnings
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
@@ -39,12 +39,73 @@ PROJECT_MANIFEST_DIR = ".claude/skills"
 PROJECT_MANIFEST_FILE = "skills.toml"
 
 
+def _lock_file_windows(
+    lock_path: Path, path: Path, mode: str
+) -> Generator[tuple[IO[Any], Path]]:
+    """Acquire exclusive lock on Windows using msvcrt.
+
+    Args:
+        lock_path: Path to the lock file.
+        path: Path to the file to open.
+        mode: File mode ('r' or 'rb' for reading, 'w' or 'wb' for writing).
+
+    Yields:
+        A tuple of (file object, lock file path).
+
+    Raises:
+        ManifestError: If lock cannot be acquired after retries.
+    """
+    import msvcrt
+    import time
+
+    with open(lock_path, "wb+") as _lock_file:
+        for _attempt in range(100):
+            try:
+                msvcrt.locking(_lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+                break
+            except OSError:
+                time.sleep(0.01)
+        else:
+            msg = f"Could not acquire lock on {lock_path}"
+            raise ManifestError(msg)
+
+        try:
+            with path.open(mode) as f:
+                yield f, lock_path
+        finally:
+            msvcrt.locking(_lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+
+
+def _lock_file_unix(
+    lock_path: Path, path: Path, mode: str
+) -> Generator[tuple[IO[Any], Path]]:
+    """Acquire exclusive lock on Unix using fcntl.
+
+    Args:
+        lock_path: Path to the lock file.
+        path: Path to the file to open.
+        mode: File mode ('r' or 'rb' for reading, 'w' or 'wb' for writing).
+
+    Yields:
+        A tuple of (file object, lock file path).
+    """
+    import fcntl
+
+    with open(lock_path, "w") as _lock_file:
+        fcntl.flock(_lock_file.fileno(), fcntl.LOCK_EX)  # type: ignore[attr-defined]
+        try:
+            with path.open(mode) as f:
+                yield f, lock_path
+        finally:
+            fcntl.flock(_lock_file.fileno(), fcntl.LOCK_UN)  # type: ignore[attr-defined]
+
+
 @contextmanager
 def _locked_file(path: Path, mode: str) -> Generator[tuple[IO[Any], Path]]:
     """Context manager for file locking during read/write operations.
 
     Uses fcntl on Unix and msvcrt on Windows for cross-platform support.
-    Lock files are cleaned up in the outer finally block after all operations complete.
+    Lock files are cleaned up after the context exits.
 
     Args:
         path: Path to the file to lock.
@@ -60,42 +121,15 @@ def _locked_file(path: Path, mode: str) -> Generator[tuple[IO[Any], Path]]:
     lock_path.parent.mkdir(parents=True, exist_ok=True)
 
     if sys.platform == "win32":
-        import msvcrt
-
-        with open(lock_path, "wb+") as _lock_file:
-            # LK_NBLCK is non-blocking; we retry manually for robustness
-            for _attempt in range(100):  # 100 attempts max
-                try:
-                    msvcrt.locking(_lock_file.fileno(), msvcrt.LK_NBLCK, 1)
-                    break  # Lock acquired
-                except OSError:
-                    # Lock is held by another process, small sleep and retry
-                    import time
-
-                    time.sleep(0.01)
-            else:
-                # Failed to acquire lock after retries
-                raise ManifestError(f"Could not acquire lock on {lock_path}")
-
-            try:
-                with path.open(mode) as f:
-                    yield f, lock_path
-            finally:
-                msvcrt.locking(_lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+        locker = _lock_file_windows
     else:
-        import fcntl
+        locker = _lock_file_unix
 
-        with open(lock_path, "w") as _lock_file:
-            fcntl.flock(_lock_file.fileno(), fcntl.LOCK_EX)
-            try:
-                with path.open(mode) as f:
-                    yield f, lock_path
-            finally:
-                fcntl.flock(_lock_file.fileno(), fcntl.LOCK_UN)
-
-    # Clean up lock file after context exits
-    with suppress(OSError):
-        lock_path.unlink()
+    try:
+        yield from locker(lock_path, path, mode)
+    finally:
+        with suppress(OSError):
+            lock_path.unlink()
 
 
 @dataclass(slots=True)
@@ -103,7 +137,7 @@ class InstalledSkill:
     """An installed skill entry."""
 
     name: str
-    source: Path
+    source: str
     version: str
 
 
@@ -223,24 +257,22 @@ def get_installed_skills(project_dir: Path) -> list[InstalledSkill]:
     manifest = read_project_manifest(project_dir)
     skills: list[InstalledSkill] = []
 
+    logger = logging.getLogger(__name__)
+
     for name, data in manifest["skills"].items():
         if not isinstance(data, dict):
-            warnings.warn(
-                f"Skipping malformed entry for skill '{name}' in manifest",
-                stacklevel=2,
-            )
+            logger.warning("Skipping malformed entry for skill '%s' in manifest", name)
             continue
         source_str = data.get("source", "")
         if not source_str:
-            warnings.warn(
-                f"Skipping entry with empty source for skill '{name}' in manifest",
-                stacklevel=2,
+            logger.warning(
+                "Skipping entry with empty source for skill '%s' in manifest", name
             )
             continue
         skills.append(
             InstalledSkill(
                 name=name,
-                source=Path(source_str),
+                source=source_str,
                 version=data.get("version", ""),
             )
         )

@@ -6,6 +6,9 @@ and on-demand linking to projects.
 
 from __future__ import annotations
 
+import logging
+import sys
+
 import click
 
 from dl_skills_manager.core.commands.bump import bump
@@ -70,6 +73,11 @@ def main() -> None:
     A CLI tool for managing Claude Code skills with centralized storage
     and on-demand linking to projects.
     """
+    logging.basicConfig(
+        level=logging.WARNING,
+        format="%(name)s: %(message)s",
+        stream=sys.stderr,
+    )
 
 
 # Register commands with error handling

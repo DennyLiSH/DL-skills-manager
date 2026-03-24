@@ -12,9 +12,10 @@ from dl_skills_manager.core.commands._shared import (
     find_skill_dir,
     find_version_dir,
     resolve_repo_path,
+    rollback_manifest_update,
 )
 from dl_skills_manager.core.exceptions import LinkError, ManifestError
-from dl_skills_manager.core.linker import create_link, remove_link
+from dl_skills_manager.core.linker import create_link
 from dl_skills_manager.core.manifest import add_skill_to_manifest, read_project_manifest
 
 
@@ -70,13 +71,9 @@ def install(name: str, project: str, version: str | None, repo: str | None) -> N
     try:
         add_skill_to_manifest(project_path, name, skill_dir, actual_version)
     except (ManifestError, OSError, LinkError):
-        # Rollback: remove the link we just created
-        remove_link(project_skill_link)
-        # Restore previous installation if one existed
-        if previous_source and previous_version:
-            add_skill_to_manifest(
-                project_path, name, Path(previous_source), previous_version
-            )
+        rollback_manifest_update(
+            project_path, name, project_skill_link, previous_source, previous_version
+        )
         raise
 
     click.echo(f"Installed {name}@{actual_version} to {project_skill_link}")
