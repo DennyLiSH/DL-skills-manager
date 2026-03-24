@@ -58,6 +58,8 @@ select = [
     "PGH",    # pygrep-hooks
     "DTZ",    # flake8-datetimez
     "ERA",    # eradicate (dead code)
+    "S",      # flake8-bandit (security)
+    "FBT",    # flake8-builtins
 ]
 # TC003: import missing from dependency groups - we use dependency-groups for dev tools
 ignore = [

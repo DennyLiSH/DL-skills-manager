@@ -1,7 +1,5 @@
 """Remove skill command."""
 
-from __future__ import annotations
-
 __all__ = ["remove"]
 
 from pathlib import Path
@@ -26,21 +24,20 @@ def remove(name: str, project: str) -> None:
     # Remove symlink/copy
     project_skill_path = project_path / ".claude" / "skills" / name
 
-    # Only try to remove if the path exists
-    if project_skill_path.exists() or project_skill_path.is_symlink():
-        try:
-            remove_link(project_skill_path)
-        except LinkError:
-            # Still update manifest even if link removal fails
-            remove_skill_from_manifest(project_path, name)
-            raise
-    else:
+    # Check if skill is installed
+    if not (project_skill_path.exists() or project_skill_path.is_symlink()):
         click.echo(f"Skill '{name}' is not installed in this project.")
         # Remove from manifest in case it's orphaned
         remove_skill_from_manifest(project_path, name)
         return
 
-    # Remove from manifest (handles case where skill wasn't in manifest)
+    # Update manifest first (safer - link removal is irreversible)
     remove_skill_from_manifest(project_path, name)
+
+    # Then remove the link
+    try:
+        remove_link(project_skill_path)
+    except LinkError:
+        raise
 
     click.echo(f"Removed {name} from project.")

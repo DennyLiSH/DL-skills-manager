@@ -4,8 +4,6 @@ Handles reading and writing the project's skills.toml manifest file
 which tracks installed skills and their sources.
 """
 
-from __future__ import annotations
-
 __all__ = [
     "add_skill_to_manifest",
     "ensure_project_manifest_dir",
@@ -18,7 +16,6 @@ __all__ = [
 ]
 
 import errno
-import fcntl
 import logging
 import msvcrt
 import sys
@@ -119,6 +116,8 @@ def _lock_file_unix(
     Yields:
         A tuple of (file object, lock file path).
     """
+    import fcntl
+
     with open(lock_path, "w") as _lock_file:
         fcntl.flock(_lock_file.fileno(), fcntl.LOCK_EX)  # type: ignore[attr-defined]
         try:

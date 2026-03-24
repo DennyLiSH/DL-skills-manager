@@ -1,7 +1,5 @@
 """Project status command."""
 
-from __future__ import annotations
-
 __all__ = ["status"]
 
 from pathlib import Path

@@ -1,7 +1,5 @@
 """Bump (create new dev version) command."""
 
-from __future__ import annotations
-
 __all__ = ["bump"]
 
 from dataclasses import replace

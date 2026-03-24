@@ -1,7 +1,5 @@
 """Cross-platform symlink management."""
 
-from __future__ import annotations
-
 __all__ = [
     "create_link",
     "is_link_valid",

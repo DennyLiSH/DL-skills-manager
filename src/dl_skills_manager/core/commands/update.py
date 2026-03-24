@@ -1,7 +1,5 @@
 """Update skill command."""
 
-from __future__ import annotations
-
 __all__ = ["update"]
 
 from pathlib import Path
@@ -49,7 +47,7 @@ def update(name: str, project: str, repo: str | None) -> None:
     current_version = skill_entry.version if skill_entry else None
     current_source = skill_entry.source if skill_entry else None
 
-    if current_version == actual_version:
+    if current_version is not None and current_version == actual_version:
         click.echo(f"{name} is already at the latest version ({actual_version})")
         return
 

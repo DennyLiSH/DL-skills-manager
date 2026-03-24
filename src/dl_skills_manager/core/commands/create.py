@@ -1,7 +1,5 @@
 """Create new skill command."""
 
-from __future__ import annotations
-
 __all__ = ["create"]
 
 from datetime import date

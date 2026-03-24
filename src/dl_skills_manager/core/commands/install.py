@@ -1,7 +1,5 @@
 """Install skill command."""
 
-from __future__ import annotations
-
 __all__ = ["install"]
 
 from pathlib import Path

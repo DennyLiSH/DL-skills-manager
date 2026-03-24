@@ -4,8 +4,6 @@ A CLI tool for managing Claude Code skills with centralized storage
 and on-demand linking to projects.
 """
 
-from __future__ import annotations
-
 __all__ = ["main"]
 
 import logging
@@ -48,7 +46,7 @@ def _handle_app_errors(cmd: click.Command) -> click.Command:
         except AppError as e:
             error_type = type(e).__name__
             click.secho(f"[{error_type}] {e}", fg="red", err=True)
-            raise SystemExit(1) from e
+            raise SystemExit(1) from None
 
     cmd.callback = wrapper
     return cmd

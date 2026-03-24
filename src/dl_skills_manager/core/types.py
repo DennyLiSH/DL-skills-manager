@@ -1,7 +1,5 @@
 """Shared type definitions for DL Skills Manager."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 
 __all__ = [
@@ -40,6 +38,11 @@ class SkillYamlData:
     tags: list[str] = field(default_factory=list)
     created: str = ""
     updated: str = ""
+
+    def __post_init__(self) -> None:
+        """Validate skill data after initialization."""
+        if self.name and not all(c.isalnum() or c in "-_" for c in self.name):
+            raise ValueError(f"Invalid skill name: {self.name}")
 
 
 @dataclass(slots=True, frozen=True)

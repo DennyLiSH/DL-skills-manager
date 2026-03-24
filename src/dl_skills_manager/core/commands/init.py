@@ -1,7 +1,5 @@
 """Initialize skills repository command."""
 
-from __future__ import annotations
-
 __all__ = ["init"]
 
 from pathlib import Path
@@ -49,9 +47,9 @@ def init(path: str | None, link_mode: str) -> None:
             f"Failed to create repository directory: {e}"
         ) from e
 
-    # Verify paths are directories after creation
-    if not repo_path.is_dir():
-        raise RepoAlreadyExistsError(f"Path exists but is not a directory: {repo_path}")
+    # Verify skills directory was created
+    if not (repo_path / "skills").exists():
+        raise RepoAlreadyExistsError("Failed to create skills directory")
 
     # Create config.toml
     config_path = repo_path / "config.toml"

@@ -1,7 +1,5 @@
 """List versions command."""
 
-from __future__ import annotations
-
 __all__ = ["versions"]
 
 from tomllib import load as load_toml

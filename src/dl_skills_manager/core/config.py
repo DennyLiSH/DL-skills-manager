@@ -1,7 +1,5 @@
 """Repository configuration management."""
 
-from __future__ import annotations
-
 __all__ = [
     "LinkMode",
     "RepoConfig",
@@ -34,21 +32,19 @@ class RepoConfig:
 
 def expand_path(path_str: str) -> Path:
     """Expand ~ to user home directory."""
-    if path_str.startswith("~"):
-        return Path(path_str).expanduser()
-    return Path(path_str)
+    return Path(path_str).expanduser()
 
 
 def get_default_repo_path() -> Path:
     """Get the default skills repository path."""
-    return expand_path("~/.skills-base")
+    return Path.home() / ".skills-base"
 
 
 def load_repo_config(repo_path: Path | None = None) -> RepoConfig:
     """Load repository configuration from config.toml.
 
     Args:
-        repo_path: Path to the repository. Defaults to ~/.skills-repo.
+        repo_path: Path to the repository. Defaults to ~/.skills-base.
 
     Returns:
         RepoConfig instance.

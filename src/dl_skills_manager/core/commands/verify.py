@@ -1,7 +1,5 @@
 """Verify (promote dev to stable) command."""
 
-from __future__ import annotations
-
 __all__ = ["verify"]
 
 import shutil

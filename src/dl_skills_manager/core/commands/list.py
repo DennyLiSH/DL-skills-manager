@@ -1,7 +1,5 @@
 """List skills command."""
 
-from __future__ import annotations
-
 __all__ = ["list_skills", "list_skills_cmd"]
 
 from pathlib import Path
