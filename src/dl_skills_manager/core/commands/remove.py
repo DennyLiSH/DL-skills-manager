@@ -8,6 +8,7 @@ from pathlib import Path
 
 import click
 
+from dl_skills_manager.core.exceptions import LinkError
 from dl_skills_manager.core.linker import remove_link
 from dl_skills_manager.core.manifest import remove_skill_from_manifest
 
@@ -27,9 +28,17 @@ def remove(name: str, project: str) -> None:
 
     # Only try to remove if the path exists
     if project_skill_path.exists() or project_skill_path.is_symlink():
-        remove_link(project_skill_path)
+        try:
+            remove_link(project_skill_path)
+        except LinkError:
+            # Still update manifest even if link removal fails
+            remove_skill_from_manifest(project_path, name)
+            raise
     else:
         click.echo(f"Skill '{name}' is not installed in this project.")
+        # Remove from manifest in case it's orphaned
+        remove_skill_from_manifest(project_path, name)
+        return
 
     # Remove from manifest (handles case where skill wasn't in manifest)
     remove_skill_from_manifest(project_path, name)

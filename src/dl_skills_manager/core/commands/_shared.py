@@ -36,6 +36,7 @@ from dl_skills_manager.core.manifest import (
     read_project_manifest,
     write_project_manifest,
 )
+from dl_skills_manager.core.types import ProjectManifest, SkillEntry
 
 logger = logging.getLogger(__name__)
 
@@ -232,7 +233,7 @@ def atomic_write_toml(path: Path, data: Mapping[str, object]) -> None:
     tmp_path: Path | None = None
     try:
         # Convert dataclass to dict if needed
-        dump_data = _dataclass_to_dict(data) if is_dataclass(data) else data
+        dump_data = dataclasses.asdict(data) if is_dataclass(data) else data
         with tempfile.NamedTemporaryFile(
             mode="wb", suffix=".toml", dir=path.parent, delete=False
         ) as tmp:
@@ -242,24 +243,10 @@ def atomic_write_toml(path: Path, data: Mapping[str, object]) -> None:
     except OSError as e:
         raise WriteError(f"Failed to write {path}") from e
     finally:
-        # Clean up temp file if it still exists (replace failed)
-        if tmp_path is not None and tmp_path.exists():
+        # Clean up temp file if it still exists (replace may have failed)
+        if tmp_path is not None:
             with suppress(OSError):
                 tmp_path.unlink()
-
-
-def _dataclass_to_dict(data: object) -> dict[str, object]:
-    """Convert a dataclass to a dictionary for TOML serialization.
-
-    Args:
-        data: A dataclass instance.
-
-    Returns:
-        A dictionary representation of the dataclass.
-    """
-    # asdict expects DataclassInstance; is_dataclass check above ensures this
-    result: dict[str, object] = dataclasses.asdict(data)  # type: ignore[call-overload]
-    return result
 
 
 def rollback_manifest_update(
@@ -268,6 +255,7 @@ def rollback_manifest_update(
     project_skill_link: Path,
     previous_source: str | None,
     previous_version: str | None,
+    previous_link_target: Path | None = None,
 ) -> None:
     """Rollback a manifest update after a failed operation.
 
@@ -279,8 +267,15 @@ def rollback_manifest_update(
         project_skill_link: Path to the created link/directory.
         previous_source: Previous source path as string, or None.
         previous_version: Previous version string, or None.
+        previous_link_target: Path to the previous link target, if any.
     """
+    # Remove the new link
     remove_link(project_skill_link)
+
+    # Restore the previous link if we have its target
+    if previous_link_target is not None:
+        create_link(previous_link_target, project_skill_link, force=False)
+
     if previous_source and previous_version:
         add_skill_to_manifest(
             project_path, name, Path(previous_source), previous_version
@@ -298,9 +293,10 @@ def install_skill_link(
     name: str,
     skill_dir: Path,
     version_dir: Path,
+    manifest: ProjectManifest,
     previous_source: str | None,
     previous_version: str | None,
-) -> None:
+) -> Path:
     """Create a skill link and update manifest with rollback on failure.
 
     This is a shared implementation for both install and update commands.
@@ -310,8 +306,12 @@ def install_skill_link(
         name: Skill name.
         skill_dir: Path to the skill directory in the repo.
         version_dir: Path to the version directory to link.
+        manifest: The project manifest (already loaded by caller).
         previous_source: Previous source path for rollback, or None.
         previous_version: Previous version for rollback, or None.
+
+    Returns:
+        Path to the created skill link.
 
     Raises:
         LinkError: If link creation fails.
@@ -320,12 +320,28 @@ def install_skill_link(
     project_skill_link = project_path / ".claude" / "skills" / name
     actual_version = version_dir.name
 
+    # Save previous link target before create_link removes it (with force=True)
+    previous_link_target: Path | None = None
+    if project_skill_link.exists() or project_skill_link.is_symlink():
+        previous_link_target = project_skill_link.resolve()
+
     create_link(version_dir, project_skill_link, force=True)
 
     try:
-        add_skill_to_manifest(project_path, name, skill_dir, actual_version)
+        # Update manifest with new entry (caller already loaded manifest)
+        manifest.skills[name] = SkillEntry(
+            source=str(skill_dir), version=actual_version
+        )
+        write_project_manifest(project_path, manifest)
     except (ManifestError, LinkError):
         rollback_manifest_update(
-            project_path, name, project_skill_link, previous_source, previous_version
+            project_path,
+            name,
+            project_skill_link,
+            previous_source,
+            previous_version,
+            previous_link_target,
         )
         raise
+
+    return project_skill_link

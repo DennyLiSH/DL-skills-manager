@@ -233,8 +233,10 @@ def write_project_manifest(
     Raises:
         ManifestError: If the manifest cannot be written.
     """
-    manifest_path = get_project_manifest_path(project_dir)
+    # Ensure directory exists (validates project_dir)
     ensure_project_manifest_dir(project_dir)
+    # Compute manifest path directly (no need to re-validate)
+    manifest_path = project_dir / PROJECT_MANIFEST_DIR / PROJECT_MANIFEST_FILE
 
     try:
         with _locked_file(manifest_path, "wb") as (f, _lock_path):

@@ -61,9 +61,14 @@ def install(name: str, project: str, version: str | None, repo: str | None) -> N
     previous_version = previous_entry.version if previous_entry else None
 
     # Create symlink/copy and update manifest with rollback on failure
-    install_skill_link(
-        project_path, name, skill_dir, version_dir, previous_source, previous_version
+    project_skill_link = install_skill_link(
+        project_path,
+        name,
+        skill_dir,
+        version_dir,
+        manifest,
+        previous_source,
+        previous_version,
     )
 
-    project_skill_link = project_path / ".claude" / "skills" / name
     click.echo(f"Installed {name}@{actual_version} to {project_skill_link}")

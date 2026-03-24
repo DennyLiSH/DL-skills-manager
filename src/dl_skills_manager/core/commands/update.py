@@ -55,7 +55,13 @@ def update(name: str, project: str, repo: str | None) -> None:
 
     # Create symlink/copy and update manifest with rollback on failure
     install_skill_link(
-        project_path, name, skill_dir, version_dir, current_source, current_version
+        project_path,
+        name,
+        skill_dir,
+        version_dir,
+        manifest,
+        current_source,
+        current_version,
     )
 
     click.echo(f"Updated {name} from {current_version} to {actual_version}")
