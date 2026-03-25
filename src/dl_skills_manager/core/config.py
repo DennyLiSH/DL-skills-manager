@@ -67,7 +67,7 @@ def load_repo_config(repo_path: Path | None = None) -> RepoConfig:
     except TOMLDecodeError as e:
         raise ConfigError(f"Failed to parse config.toml: {e}") from e
 
-    repo_data = data.get("repo", {})
+    basic_data = data.get("basic", {})
     settings_data = data.get("settings", {})
 
     default_link_mode = settings_data.get("default_link_mode", "symlink")
@@ -78,15 +78,22 @@ def load_repo_config(repo_path: Path | None = None) -> RepoConfig:
         )
 
     # Load skills_store from config, default to ~/.skill-sync/skills/
-    skills_store_str = repo_data.get("skills_store", None)
+    skills_store_str = basic_data.get("skills_store", None)
     if skills_store_str:
         skills_store = expand_path(skills_store_str)
     else:
         skills_store = repo_path / "skills"
 
+    # Load path from config, default to repo_path
+    path_str = basic_data.get("path", None)
+    if path_str:
+        path = expand_path(path_str)
+    else:
+        path = repo_path
+
     return RepoConfig(
-        name=repo_data.get("name", "my-skills"),
-        path=repo_path,
+        name="",  # deprecated, kept for compatibility
+        path=path,
         skills_store=skills_store,
         default_link_mode=default_link_mode,
         fallback_to_copy=settings_data.get("fallback_to_copy", True),

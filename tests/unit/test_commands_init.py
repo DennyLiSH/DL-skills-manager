@@ -50,7 +50,7 @@ class TestInitCommand:
         assert result.exit_code == 0
         config_path = mock_config_path / "config.toml"
         content = config_path.read_text()
-        assert "[repo]" in content
+        assert "[basic]" in content
         assert "[settings]" in content
         assert "skills_store" in content
 

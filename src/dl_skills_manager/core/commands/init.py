@@ -118,11 +118,11 @@ def init(skills_path: str | None, link_mode: str) -> None:
     # Scan existing skills and backup them
     skills_found = _scan_and_backup_skills(skills_storage_path, bk_path)
 
-    # Create config.toml with skills_store field
+    # Create config.toml with [basic] section
     config_file = config_path / "config.toml"
     config_data = {
-        "repo": {
-            "name": "my-skills",
+        "basic": {
+            "path": str(config_path),
             "skills_store": str(skills_storage_path),
         },
         "settings": {

@@ -71,8 +71,8 @@ class TestLoadRepoConfig:
         skills_store = tmp_path / "skills"
         skills_store.mkdir()
         config_path.write_text(
-            """[repo]
-name = "test-repo"
+            """[basic]
+path = "~/.skill-sync"
 skills_store = "/tmp/skills"
 
 [settings]
@@ -83,7 +83,7 @@ fallback_to_copy = false
 
         config = load_repo_config(tmp_path)
 
-        assert config.name == "test-repo"
+        assert config.path == Path.home() / ".skill-sync"
         assert config.skills_store == Path("/tmp/skills")
         assert config.default_link_mode == "copy"
         assert config.fallback_to_copy is False
@@ -92,15 +92,15 @@ fallback_to_copy = false
         """Test defaults are used when fields are missing."""
         config_path = tmp_path / "config.toml"
         config_path.write_text(
-            """[repo]
-name = "minimal-repo"
+            """[basic]
+skills_store = "/custom/skills"
 """
         )
 
         config = load_repo_config(tmp_path)
 
-        assert config.name == "minimal-repo"
         assert config.default_link_mode == "symlink"
         assert config.fallback_to_copy is True
-        # skills_store defaults to repo_path / "skills"
-        assert config.skills_store == tmp_path / "skills"
+        # path defaults to repo_path
+        assert config.path == tmp_path
+        assert config.skills_store == Path("/custom/skills")
