@@ -62,7 +62,7 @@ def install(name: str, project: str, version: str | None, repo: str | None) -> N
     # Find skill and version directories
     skill_dir = find_skill_dir(repo_path, name)
     version_dir = find_version_dir(skill_dir, version)
-    actual_version = version_dir.name
+    actual_version = version if version else "latest"
 
     # Check if skill was already installed to support proper rollback
     manifest = read_project_manifest(project_path)

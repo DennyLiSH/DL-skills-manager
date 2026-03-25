@@ -39,7 +39,7 @@ def update(name: str, project: str, repo: str | None) -> None:
     # Find skill and version directories (update always uses stable/latest)
     skill_dir = find_skill_dir(repo_path, name)
     version_dir = find_version_dir(skill_dir, version=None)
-    actual_version = version_dir.name
+    actual_version = "latest"
 
     # Check current installed version and save for rollback
     manifest = read_project_manifest(project_path)

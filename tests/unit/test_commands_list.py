@@ -42,11 +42,14 @@ def initialized_repo(tmp_path: Path) -> Path:
     # Create a test skill (must contain SKILL.md to be recognized)
     skill_dir = skills_dir / "test-skill"
     skill_dir.mkdir()
-    (skill_dir / "v2026.03.23").mkdir()
-    (skill_dir / "skill.yaml").write_text(
-        "name = 'test-skill'\ndescription = 'A test skill'\n"
-    )
     (skill_dir / "SKILL.md").write_text("# Test Skill\n")
+
+    # Create a history version in .bk
+    bk_dir = skills_dir / ".bk"
+    bk_dir.mkdir()
+    bk_skill_dir = bk_dir / "test-skill@v2026.03.22"
+    bk_skill_dir.mkdir()
+    (bk_skill_dir / "SKILL.md").write_text("# Test Skill Old\n")
 
     return config_dir
 
@@ -80,8 +83,9 @@ class TestListSkills:
         skills, warnings = list_skills(initialized_repo)
         assert len(skills) == 1
         assert skills[0].name == "test-skill"
-        assert skills[0].description == "A test skill"
-        assert skills[0].versions == 1
+        assert skills[0].description == ""
+        assert skills[0].version == "current"
+        assert skills[0].history == ("v2026.03.22",)
         assert warnings == []
 
 
@@ -104,4 +108,4 @@ class TestListCommand:
 
         assert result.exit_code == 0
         assert "test-skill" in result.output
-        assert "1 version" in result.output
+        assert "1 history" in result.output

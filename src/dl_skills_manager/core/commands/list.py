@@ -3,8 +3,6 @@
 __all__ = ["list_skills", "list_skills_cmd"]
 
 from pathlib import Path
-from tomllib import TOMLDecodeError
-from tomllib import load as load_toml
 
 import click
 
@@ -35,11 +33,27 @@ def list_skills(
     skills: list[SkillInfo] = []
     warnings: list[str] = []
 
+    bk_dir = skills_dir / ".bk"
+    history_map: dict[str, list[str]] = {}
+
+    # Scan .bk for history versions first
+    if bk_dir.exists():
+        for bk_item in sorted(bk_dir.iterdir()):
+            if not bk_item.is_dir():
+                continue
+            # Format: {skill-name}@{version}
+            if "@" in bk_item.name:
+                skill_name, version = bk_item.name.split("@", 1)
+                if skill_name not in history_map:
+                    history_map[skill_name] = []
+                history_map[skill_name].append(version)
+
+    # Scan skills_store for valid skills
     for skill_dir in sorted(skills_dir.iterdir()):
         if not skill_dir.is_dir():
             continue
-        # Skip hidden directories
-        if skill_dir.name.startswith("."):
+        # Skip .bk directory itself
+        if skill_dir.name == ".bk":
             continue
 
         # Only directories containing SKILL.md are considered skills
@@ -48,27 +62,15 @@ def list_skills(
 
         skill_name = skill_dir.name
 
-        # Count versions
-        version_count = sum(
-            1 for v in skill_dir.iterdir() if v.is_dir() and v.name.startswith("v")
-        )
-
-        # Read skill.yaml for description
-        skill_yaml = skill_dir / "skill.yaml"
-        description = ""
-        if skill_yaml.exists():
-            try:
-                with skill_yaml.open("rb") as f:
-                    data = load_toml(f)
-                    description = data.get("description", "")
-            except TOMLDecodeError as e:
-                warnings.append(f"Skipping malformed {skill_yaml}: {e}")
+        # Get history from .bk
+        history = sorted(history_map.get(skill_name, []), reverse=True)
 
         skills.append(
             SkillInfo(
                 name=skill_name,
-                description=description,
-                versions=version_count,
+                description="",
+                version="current",
+                history=tuple(history),
             )
         )
 
@@ -102,8 +104,12 @@ def list_skills_cmd(repo: str | None) -> None:
     click.echo("")
 
     for skill in skills:
-        version_count = skill.versions
-        version_label = f"({version_count} version{'s' if version_count != 1 else ''})"
+        if skill.history:
+            version_label = f"(current, {len(skill.history)} history)"
+        else:
+            version_label = "(current)"
         click.echo(f"  {skill.name} {version_label}")
         if skill.description:
             click.echo(f"    {skill.description}")
+        if skill.history:
+            click.echo(f"    history: {', '.join(skill.history)}")

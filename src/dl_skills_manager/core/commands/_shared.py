@@ -186,12 +186,19 @@ def find_version_dir(skill_dir: Path, version: str | None = None) -> Path:
         VersionNotFoundError: If no suitable version is found.
     """
     if version:
+        # Check current skill directory first
         requested_version_path = skill_dir / version
-        if not requested_version_path.exists():
-            raise VersionNotFoundError(
-                f"Version '{version}' not found for skill '{skill_dir.name}'"
-            )
-        return requested_version_path
+        if requested_version_path.exists():
+            return requested_version_path
+
+        # Check .bk directory for history versions
+        bk_path = skill_dir.parent / ".bk" / f"{skill_dir.name}@{version}"
+        if bk_path.exists():
+            return bk_path
+
+        raise VersionNotFoundError(
+            f"Version '{version}' not found for skill '{skill_dir.name}'"
+        )
 
     version_path: Path | None = _find_stable_or_latest(skill_dir)
 
@@ -202,40 +209,16 @@ def find_version_dir(skill_dir: Path, version: str | None = None) -> Path:
 
 
 def _find_stable_or_latest(skill_dir: Path) -> Path | None:
-    """Find stable version from skill.yaml or latest version directory.
+    """Return the skill directory as stable version.
 
     Args:
         skill_dir: Path to the skill directory.
 
     Returns:
-        Path to the latest stable version directory, or None if not found.
+        Path to the skill directory itself, or None if not found.
     """
-    skill_yaml_path = skill_dir / "skill.yaml"
-    if skill_yaml_path.exists():
-        try:
-            with skill_yaml_path.open("rb") as f:
-                skill_data = load_toml(f)
-                stable = skill_data.get("stable_version", "")
-                if stable:
-                    candidate: Path = skill_dir / stable
-                    if candidate.exists():
-                        return candidate
-        except TOMLDecodeError:
-            logger.warning(
-                "Malformed skill.yaml in %s, falling back to version directory",
-                skill_dir,
-            )
-
-    # Fall back to any version
-    version_dirs = [
-        d for d in skill_dir.iterdir() if d.is_dir() and d.name.startswith("v")
-    ]
-    for v in sorted(
-        version_dirs,
-        key=lambda p: _parse_version(p.name),
-        reverse=True,
-    ):
-        return v
+    if skill_dir.exists() and skill_dir.is_dir():
+        return skill_dir
     return None
 
 

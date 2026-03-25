@@ -36,12 +36,10 @@ def repo_with_skill(tmp_path: Path) -> Path:
             f,
         )
 
-    # Create a test skill with version
+    # Create a test skill (new architecture: no version subdirectory)
     skill_dir = repo_path / "skills" / "test-skill"
     skill_dir.mkdir()
-    version_dir = skill_dir / "v2026.03.23"
-    version_dir.mkdir()
-    (version_dir / "SKILL.md").write_text("# Test Skill\n")
+    (skill_dir / "SKILL.md").write_text("# Test Skill\n")
 
     # Create skill.yaml
     skill_yaml = skill_dir / "skill.yaml"
@@ -86,7 +84,7 @@ class TestInstallCommand:
         )
 
         assert result.exit_code == 0, result.output
-        assert "Installed test-skill@v2026.03.23" in result.output
+        assert "Installed test-skill@latest" in result.output
 
         # Check symlink was created
         skill_link = project_dir / ".claude" / "skills" / "test-skill"
@@ -113,12 +111,14 @@ class TestInstallCommand:
     def test_install_with_version(
         self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
     ) -> None:
-        """Test installing a specific version."""
-        # Create a dev version
-        skill_dir = repo_with_skill / "skills" / "test-skill"
-        dev_version = skill_dir / "v2026.03.25-dev"
-        dev_version.mkdir()
-        (dev_version / "SKILL.md").write_text("# Dev Version\n")
+        """Test installing a specific version from .bk."""
+        # Create a history version in .bk
+        skills_dir = repo_with_skill / "skills"
+        bk_dir = skills_dir / ".bk"
+        bk_dir.mkdir()
+        bk_version_dir = bk_dir / "test-skill@v2026.03.22"
+        bk_version_dir.mkdir()
+        (bk_version_dir / "SKILL.md").write_text("# Old Version\n")
 
         result = cli_runner.invoke(
             main,
@@ -129,9 +129,9 @@ class TestInstallCommand:
                 "--repo",
                 str(repo_with_skill),
                 "--version",
-                "v2026.03.25-dev",
+                "v2026.03.22",
             ],
         )
 
         assert result.exit_code == 0, result.output
-        assert "v2026.03.25-dev" in result.output
+        assert "v2026.03.22" in result.output

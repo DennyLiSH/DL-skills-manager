@@ -52,7 +52,8 @@ class SkillInfo:
 
     name: str
     description: str
-    versions: int
+    version: str
+    history: tuple[str, ...]
 
 
 @dataclass(slots=True, frozen=True)
