@@ -28,7 +28,7 @@ def list_skills(
         config_path = get_default_repo_path()
 
     config = load_repo_config(config_path)
-    skills_dir = config.skills_path
+    skills_dir = config.skills_store
     if not skills_dir.exists():
         return [], []
 
@@ -38,8 +38,12 @@ def list_skills(
     for skill_dir in sorted(skills_dir.iterdir()):
         if not skill_dir.is_dir():
             continue
-        # Skip hidden directories and non-alphanumeric skill names
+        # Skip hidden directories
         if skill_dir.name.startswith("."):
+            continue
+
+        # Only directories containing SKILL.md are considered skills
+        if not (skill_dir / "SKILL.md").exists():
             continue
 
         skill_name = skill_dir.name
@@ -82,7 +86,7 @@ def list_skills_cmd(repo: str | None) -> None:
     """List all available skills in the repository."""
     config_path = resolve_repo_path(repo)
     config = load_repo_config(config_path)
-    skills_path = config.skills_path
+    skills_path = config.skills_store
 
     skills, warnings = list_skills(config_path)
 
@@ -90,7 +94,8 @@ def list_skills_cmd(repo: str | None) -> None:
         click.echo(f"Warning: {warning}", err=True)
 
     if not skills:
-        click.echo("No skills found. Run 'skill-sync init' first.")
+        click.echo(f"No skills found in {skills_path}.")
+        click.echo("Please copy skill folders to this path, then run 'skill-sync list' again.")
         return
 
     click.echo(f"Skills in {skills_path}:")

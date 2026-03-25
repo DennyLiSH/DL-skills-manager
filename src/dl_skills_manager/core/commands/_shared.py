@@ -155,9 +155,9 @@ def find_skill_dir(repo_path: Path, name: str) -> Path:
     # Validate skill name to prevent path traversal and ensure format consistency
     validate_skill_name(name)
 
-    # Load config to get skills_path
+    # Load config to get skills_store
     config = load_repo_config(repo_path)
-    skills_base = config.skills_path.resolve()
+    skills_base = config.skills_store.resolve()
     skill_dir = skills_base / name
 
     # Verify the resolved path is still within the skills directory

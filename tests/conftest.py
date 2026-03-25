@@ -27,7 +27,7 @@ def skills_repo_dir(tmp_path: Path) -> Path:
     with config_path.open("wb") as f:
         tomli_w.dump(
             {
-                "repo": {"name": "test-skills", "skills_path": str(skills_dir)},
+                "repo": {"name": "test-skills", "skills_store": str(skills_dir)},
                 "settings": {"default_link_mode": "symlink", "fallback_to_copy": True},
             },
             f,

@@ -46,13 +46,13 @@ class TestCreateDefaultConfig:
     def test_returns_default_values(self) -> None:
         """Test default config has expected values."""
         repo_path = Path("/test/.skill-sync")
-        skills_path = Path("/test/.skill-sync/skills")
-        config = create_default_config(repo_path, skills_path)
+        skills_store = Path("/test/.skill-sync/skills")
+        config = create_default_config(repo_path, skills_store)
 
         assert isinstance(config, RepoConfig)
         assert config.name == "my-skills"
         assert config.path == repo_path
-        assert config.skills_path == skills_path
+        assert config.skills_store == skills_store
         assert config.default_link_mode == "symlink"
         assert config.fallback_to_copy is True
 
@@ -68,12 +68,12 @@ class TestLoadRepoConfig:
     def test_loads_valid_config(self, tmp_path: Path) -> None:
         """Test loading a valid config.toml."""
         config_path = tmp_path / "config.toml"
-        skills_path = tmp_path / "skills"
-        skills_path.mkdir()
+        skills_store = tmp_path / "skills"
+        skills_store.mkdir()
         config_path.write_text(
             """[repo]
 name = "test-repo"
-skills_path = "/tmp/skills"
+skills_store = "/tmp/skills"
 
 [settings]
 default_link_mode = "copy"
@@ -84,7 +84,7 @@ fallback_to_copy = false
         config = load_repo_config(tmp_path)
 
         assert config.name == "test-repo"
-        assert config.skills_path == Path("/tmp/skills")
+        assert config.skills_store == Path("/tmp/skills")
         assert config.default_link_mode == "copy"
         assert config.fallback_to_copy is False
 
@@ -102,5 +102,5 @@ name = "minimal-repo"
         assert config.name == "minimal-repo"
         assert config.default_link_mode == "symlink"
         assert config.fallback_to_copy is True
-        # skills_path defaults to repo_path / "skills"
-        assert config.skills_path == tmp_path / "skills"
+        # skills_store defaults to repo_path / "skills"
+        assert config.skills_store == tmp_path / "skills"

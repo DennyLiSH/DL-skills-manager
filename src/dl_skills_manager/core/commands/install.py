@@ -35,12 +35,24 @@ def install(name: str, project: str, version: str | None, repo: str | None) -> N
     Creates a symlink (or copies) the skill to .claude/skills/{skill_name}.
     Updates the project's skills.toml manifest.
 
+    Supports name@version syntax for specifying version directly in the name.
+
     Args:
-        name: Name of the skill to install.
+        name: Name of the skill to install (optionally with @version suffix).
         project: Path to the project directory (default: current directory).
         version: Specific version to install (default: latest stable).
         repo: Path to skills repository (default: ~/.skills-repo).
     """
+    # Parse name@version syntax
+    if "@" in name:
+        name_parts = name.rsplit("@", 1)
+        parsed_name = name_parts[0]
+        parsed_version = name_parts[1] if len(name_parts) > 1 else None
+        # parsed_version takes precedence if specified, otherwise use --version option
+        if parsed_version:
+            version = parsed_version
+        name = parsed_name
+
     # Determine repo path
     repo_path = resolve_repo_path(repo)
 

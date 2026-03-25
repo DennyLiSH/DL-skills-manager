@@ -52,7 +52,7 @@ class TestInitCommand:
         content = config_path.read_text()
         assert "[repo]" in content
         assert "[settings]" in content
-        assert "skills_path" in content
+        assert "skills_store" in content
 
     def test_init_already_exists(self, cli_runner: CliRunner, tmp_path: Path) -> None:
         """Test init fails when config dir already exists."""

@@ -28,24 +28,25 @@ def initialized_repo(tmp_path: Path) -> Path:
     skills_dir = config_dir / "skills"
     skills_dir.mkdir()
 
-    # Create config.toml with skills_path
+    # Create config.toml with skills_store
     config_path = config_dir / "config.toml"
     with config_path.open("wb") as f:
         tomli_w.dump(
             {
-                "repo": {"name": "test", "skills_path": str(skills_dir)},
+                "repo": {"name": "test", "skills_store": str(skills_dir)},
                 "settings": {"default_link_mode": "symlink", "fallback_to_copy": True},
             },
             f,
         )
 
-    # Create a test skill
+    # Create a test skill (must contain SKILL.md to be recognized)
     skill_dir = skills_dir / "test-skill"
     skill_dir.mkdir()
     (skill_dir / "v2026.03.23").mkdir()
     (skill_dir / "skill.yaml").write_text(
         "name = 'test-skill'\ndescription = 'A test skill'\n"
     )
+    (skill_dir / "SKILL.md").write_text("# Test Skill\n")
 
     return config_dir
 
@@ -64,7 +65,7 @@ class TestListSkills:
         with config_path.open("wb") as f:
             tomli_w.dump(
                 {
-                    "repo": {"name": "test", "skills_path": str(skills_dir)},
+                    "repo": {"name": "test", "skills_store": str(skills_dir)},
                     "settings": {"default_link_mode": "symlink", "fallback_to_copy": True},
                 },
                 f,

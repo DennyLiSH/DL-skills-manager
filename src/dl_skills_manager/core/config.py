@@ -26,7 +26,7 @@ class RepoConfig:
 
     name: str
     path: Path
-    skills_path: Path
+    skills_store: Path
     default_link_mode: LinkMode
     fallback_to_copy: bool
 
@@ -77,28 +77,28 @@ def load_repo_config(repo_path: Path | None = None) -> RepoConfig:
             "Must be 'symlink' or 'copy'."
         )
 
-    # Load skills_path from config, default to ~/.skill-sync/skills/
-    skills_path_str = repo_data.get("skills_path", None)
-    if skills_path_str:
-        skills_path = expand_path(skills_path_str)
+    # Load skills_store from config, default to ~/.skill-sync/skills/
+    skills_store_str = repo_data.get("skills_store", None)
+    if skills_store_str:
+        skills_store = expand_path(skills_store_str)
     else:
-        skills_path = repo_path / "skills"
+        skills_store = repo_path / "skills"
 
     return RepoConfig(
         name=repo_data.get("name", "my-skills"),
         path=repo_path,
-        skills_path=skills_path,
+        skills_store=skills_store,
         default_link_mode=default_link_mode,
         fallback_to_copy=settings_data.get("fallback_to_copy", True),
     )
 
 
-def create_default_config(repo_path: Path, skills_path: Path) -> RepoConfig:
+def create_default_config(repo_path: Path, skills_store: Path) -> RepoConfig:
     """Create default repository configuration.
 
     Args:
         repo_path: Path to the config directory.
-        skills_path: Path to the skills storage directory.
+        skills_store: Path to the skills storage directory.
 
     Returns:
         Default RepoConfig instance.
@@ -106,7 +106,7 @@ def create_default_config(repo_path: Path, skills_path: Path) -> RepoConfig:
     return RepoConfig(
         name="my-skills",
         path=repo_path,
-        skills_path=skills_path,
+        skills_store=skills_store,
         default_link_mode="symlink",
         fallback_to_copy=True,
     )
