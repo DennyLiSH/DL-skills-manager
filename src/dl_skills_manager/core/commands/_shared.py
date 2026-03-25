@@ -15,7 +15,7 @@ from datetime import date
 from pathlib import Path
 from tomllib import TOMLDecodeError
 from tomllib import load as load_toml
-from typing import overload
+from typing import cast, overload
 
 import tomli_w
 from packaging.version import InvalidVersion, Version
@@ -189,42 +189,50 @@ def find_version_dir(skill_dir: Path, version: str | None = None) -> Path:
             )
         return requested_version_path
 
-    def find_stable_or_latest() -> Path | None:
-        """Find stable version from skill.yaml or latest version directory."""
-        skill_yaml_path = skill_dir / "skill.yaml"
-        if skill_yaml_path.exists():
-            try:
-                with skill_yaml_path.open("rb") as f:
-                    skill_data = load_toml(f)
-                    stable = skill_data.get("stable_version", "")
-                    if stable:
-                        candidate: Path = skill_dir / stable
-                        if candidate.exists():
-                            return candidate
-            except TOMLDecodeError:
-                logger.warning(
-                    "Malformed skill.yaml in %s, falling back to version directory",
-                    skill_dir,
-                )
-
-        # Fall back to any version
-        version_dirs = [
-            d for d in skill_dir.iterdir() if d.is_dir() and d.name.startswith("v")
-        ]
-        for v in sorted(
-            version_dirs,
-            key=lambda p: _parse_version(p.name),
-            reverse=True,
-        ):
-            return v
-        return None
-
-    version_path: Path | None = find_stable_or_latest()
+    version_path: Path | None = _find_stable_or_latest(skill_dir)
 
     if version_path is None or not version_path.exists():
         raise VersionNotFoundError(f"No version found for skill '{skill_dir.name}'")
 
     return version_path
+
+
+def _find_stable_or_latest(skill_dir: Path) -> Path | None:
+    """Find stable version from skill.yaml or latest version directory.
+
+    Args:
+        skill_dir: Path to the skill directory.
+
+    Returns:
+        Path to the latest stable version directory, or None if not found.
+    """
+    skill_yaml_path = skill_dir / "skill.yaml"
+    if skill_yaml_path.exists():
+        try:
+            with skill_yaml_path.open("rb") as f:
+                skill_data = load_toml(f)
+                stable = skill_data.get("stable_version", "")
+                if stable:
+                    candidate: Path = skill_dir / stable
+                    if candidate.exists():
+                        return candidate
+        except TOMLDecodeError:
+            logger.warning(
+                "Malformed skill.yaml in %s, falling back to version directory",
+                skill_dir,
+            )
+
+    # Fall back to any version
+    version_dirs = [
+        d for d in skill_dir.iterdir() if d.is_dir() and d.name.startswith("v")
+    ]
+    for v in sorted(
+        version_dirs,
+        key=lambda p: _parse_version(p.name),
+        reverse=True,
+    ):
+        return v
+    return None
 
 
 # Using overloads to properly handle both Mapping and dataclass inputs
@@ -261,7 +269,7 @@ def atomic_write_toml(path: Path, data: Mapping[str, object] | object) -> None:
             # 3. dataclasses.asdict() requires a dataclass instance
             dump_data: Mapping[str, object] = dataclasses.asdict(data)
         else:
-            dump_data = data  # type: ignore[assignment]
+            dump_data = cast("Mapping[str, object]", data)
         with tempfile.NamedTemporaryFile(
             mode="wb", suffix=".toml", dir=path.parent, delete=False
         ) as tmp:
@@ -379,7 +387,7 @@ def install_skill_link(
     create_link(version_dir, project_skill_link, force=True)
 
     try:
-        # Update manifest with new entry (caller already loaded manifest)
+        # Update manifest with new entry
         manifest.skills[name] = SkillEntry(
             source=str(skill_dir), version=actual_version
         )

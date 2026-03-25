@@ -45,7 +45,7 @@ def _handle_app_errors(cmd: click.Command) -> click.Command:
             raise RuntimeError("Command has no callback")
         except AppError as e:
             error_type = type(e).__name__
-            click.secho(f"[[{error_type}]] {e}", fg="red", err=True)
+            click.secho(f"Error: [{error_type}] {e}", fg="red", err=True)
             raise SystemExit(1) from None
 
     cmd.callback = wrapper
@@ -69,12 +69,12 @@ def main() -> None:
 # Register commands with error handling
 main.add_command(_handle_app_errors(init))
 main.add_command(_handle_app_errors(list_skills_cmd), name="list")
-main.add_command(_handle_app_errors(create))
+# main.add_command(_handle_app_errors(create))  # TBD
 main.add_command(_handle_app_errors(install))
 main.add_command(_handle_app_errors(remove))
 main.add_command(_handle_app_errors(update))
-main.add_command(_handle_app_errors(bump))
-main.add_command(_handle_app_errors(verify))
+# main.add_command(_handle_app_errors(bump))  # TBD
+# main.add_command(_handle_app_errors(verify))  # TBD
 main.add_command(_handle_app_errors(versions))
 main.add_command(_handle_app_errors(status))
 

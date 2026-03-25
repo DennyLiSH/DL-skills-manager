@@ -1,4 +1,4 @@
-"""Bump (create new dev version) command."""
+"""Bump (create new dev version) command. TBD"""
 
 __all__ = ["bump"]
 

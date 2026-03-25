@@ -41,8 +41,9 @@ class SkillYamlData:
 
     def __post_init__(self) -> None:
         """Validate skill data after initialization."""
-        if self.name and not all(c.isalnum() or c in "-_" for c in self.name):
-            raise ValueError(f"Invalid skill name: {self.name}")
+        if self.name:
+            if not all(c.isalnum() or c in "-_" for c in self.name):
+                raise ValueError(f"Invalid skill name: {self.name}")
 
 
 @dataclass(slots=True, frozen=True)

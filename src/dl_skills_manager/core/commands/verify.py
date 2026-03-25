@@ -1,4 +1,4 @@
-"""Verify (promote dev to stable) command."""
+"""Verify (promote dev to stable) command. TBD"""
 
 __all__ = ["verify"]
 

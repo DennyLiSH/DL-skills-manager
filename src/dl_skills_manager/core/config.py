@@ -69,10 +69,17 @@ def load_repo_config(repo_path: Path | None = None) -> RepoConfig:
     repo_data = data.get("repo", {})
     settings_data = data.get("settings", {})
 
+    default_link_mode = settings_data.get("default_link_mode", "symlink")
+    if default_link_mode not in ("symlink", "copy"):
+        raise ConfigError(
+            f"Invalid default_link_mode '{default_link_mode}' in config.toml. "
+            "Must be 'symlink' or 'copy'."
+        )
+
     return RepoConfig(
         name=repo_data.get("name", "my-skills"),
         path=expand_path(repo_data.get("path", str(repo_path))),
-        default_link_mode=settings_data.get("default_link_mode", "symlink"),
+        default_link_mode=default_link_mode,
         fallback_to_copy=settings_data.get("fallback_to_copy", True),
     )
 

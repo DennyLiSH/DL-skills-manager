@@ -84,9 +84,8 @@ class TestResolveRepoPath:
         with patch(
             "dl_skills_manager.core.commands._shared.load_repo_config",
             side_effect=ConfigError("Not a config"),
-        ):
-            with pytest.raises(ConfigError, match="not initialized"):
-                resolve_repo_path(str(existing_dir))
+        ), pytest.raises(ConfigError, match="not initialized"):
+            resolve_repo_path(str(existing_dir))
 
 
 class TestFindVersionDir:

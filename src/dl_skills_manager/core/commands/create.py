@@ -1,4 +1,4 @@
-"""Create new skill command."""
+"""Create new skill command. TBD"""
 
 __all__ = ["create"]
 

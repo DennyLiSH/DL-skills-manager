@@ -20,7 +20,7 @@ import logging
 import sys
 import time
 from collections.abc import Generator
-from contextlib import contextmanager, suppress
+from contextlib import contextmanager
 from dataclasses import is_dataclass
 from pathlib import Path
 from tomllib import TOMLDecodeError
@@ -161,8 +161,10 @@ def _locked_file(path: Path, mode: str) -> Generator[tuple[IO[Any], Path]]:
         yield from locker(lock_path, path, mode)
     finally:
         # Ensure lock file is always cleaned up, even if operations fail
-        with suppress(OSError):
+        try:
             lock_path.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def get_project_manifest_path(project_dir: Path) -> Path:
