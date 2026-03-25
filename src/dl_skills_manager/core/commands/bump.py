@@ -9,10 +9,10 @@ import click
 
 from dl_skills_manager.core.commands._shared import (
     atomic_write_toml,
+    find_skill_dir,
     format_version_date,
     resolve_repo_path,
 )
-from dl_skills_manager.core.exceptions import SkillNotFoundError
 from dl_skills_manager.core.manifest import read_skill_yaml
 
 
@@ -33,9 +33,7 @@ def bump(name: str, repo: str | None) -> None:
     repo_path = resolve_repo_path(repo)
 
     # Find skill directory
-    skill_dir = repo_path / "skills" / name
-    if not skill_dir.exists():
-        raise SkillNotFoundError(f"Skill '{name}' not found in repository")
+    skill_dir = find_skill_dir(repo_path, name)
 
     # Create new dev version with today's date
     today = date.today()

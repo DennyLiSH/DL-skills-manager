@@ -9,9 +9,12 @@ from pathlib import Path
 
 import click
 
-from dl_skills_manager.core.commands._shared import atomic_write_toml, resolve_repo_path
+from dl_skills_manager.core.commands._shared import (
+    atomic_write_toml,
+    find_skill_dir,
+    resolve_repo_path,
+)
 from dl_skills_manager.core.exceptions import (
-    SkillNotFoundError,
     VersionNotFoundError,
     WriteError,
 )
@@ -35,9 +38,7 @@ def verify(name: str, repo: str | None) -> None:
     repo_path = resolve_repo_path(repo)
 
     # Find skill directory
-    skill_dir = repo_path / "skills" / name
-    if not skill_dir.exists():
-        raise SkillNotFoundError(f"Skill '{name}' not found in repository")
+    skill_dir = find_skill_dir(repo_path, name)
 
     # Find dev version
     dev_dir: Path | None = None

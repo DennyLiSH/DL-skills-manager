@@ -118,7 +118,7 @@ def remove_link(target: Path) -> None:
     Raises:
         LinkError: If the removal fails.
     """
-    if not target.is_symlink() and not target.exists():
+    if not target.exists() and not target.is_symlink():
         raise LinkError(f"Target does not exist: {target}")
 
     try:

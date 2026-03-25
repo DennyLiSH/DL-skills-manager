@@ -6,8 +6,7 @@ from tomllib import load as load_toml
 
 import click
 
-from dl_skills_manager.core.commands._shared import resolve_repo_path
-from dl_skills_manager.core.exceptions import SkillNotFoundError
+from dl_skills_manager.core.commands._shared import find_skill_dir, resolve_repo_path
 
 
 @click.command()
@@ -24,9 +23,7 @@ def versions(name: str, repo: str | None) -> None:
     repo_path = resolve_repo_path(repo)
 
     # Find skill directory
-    skill_dir = repo_path / "skills" / name
-    if not skill_dir.exists():
-        raise SkillNotFoundError(f"Skill '{name}' not found in repository")
+    skill_dir = find_skill_dir(repo_path, name)
 
     # Read skill.yaml for stable version info
     skill_yaml_path = skill_dir / "skill.yaml"

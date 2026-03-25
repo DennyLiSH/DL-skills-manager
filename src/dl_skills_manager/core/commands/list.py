@@ -87,7 +87,7 @@ def list_skills_cmd(repo: str | None) -> None:
         click.echo(f"Warning: {warning}", err=True)
 
     if not skills:
-        click.echo("No skills found. Run 'dl-skills-manager init' first.")
+        click.echo("No skills found. Run 'skill-sync init' first.")
         return
 
     click.echo(f"Skills in {repo_path}:")
