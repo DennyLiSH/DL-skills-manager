@@ -77,7 +77,7 @@ def verify(name: str, repo: str | None) -> None:
 
     # Atomic write using shared function with rollback on failure
     try:
-        atomic_write_toml(skill_yaml_path, updated_data)  # type: ignore[arg-type]
+        atomic_write_toml(skill_yaml_path, updated_data)
     except WriteError:
         # Rollback: move stable back to dev
         shutil.move(stable_dir, dev_dir)

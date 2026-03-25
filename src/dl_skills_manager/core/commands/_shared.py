@@ -15,6 +15,7 @@ from datetime import date
 from pathlib import Path
 from tomllib import TOMLDecodeError
 from tomllib import load as load_toml
+from typing import overload
 
 import tomli_w
 from packaging.version import InvalidVersion, Version
@@ -224,7 +225,20 @@ def find_version_dir(skill_dir: Path, version: str | None = None) -> Path:
     return version_path
 
 
-def atomic_write_toml(path: Path, data: Mapping[str, object]) -> None:
+# Using overloads to properly handle both Mapping and dataclass inputs
+# - Mapping inputs are written directly
+# - dataclass inputs are converted via dataclasses.asdict()
+
+
+@overload
+def atomic_write_toml(path: Path, data: Mapping[str, object]) -> None: ...
+
+
+@overload
+def atomic_write_toml(path: Path, data: object) -> None: ...
+
+
+def atomic_write_toml(path: Path, data: Mapping[str, object] | object) -> None:
     """Atomically write a TOML file using a temporary file.
 
     Args:
@@ -237,7 +251,15 @@ def atomic_write_toml(path: Path, data: Mapping[str, object]) -> None:
     tmp_path: Path | None = None
     try:
         # Convert dataclass to dict if needed
-        dump_data = dataclasses.asdict(data) if is_dataclass(data) else data
+        if is_dataclass(data) and not isinstance(data, type):
+            # mypy doesn't narrow types through is_dataclass() check,
+            # so we must use cast. This is safe because:
+            # 1. is_dataclass() returns True for dataclass instances and classes
+            # 2. isinstance(data, type) being False confirms it's an instance
+            # 3. dataclasses.asdict() requires a dataclass instance
+            dump_data: Mapping[str, object] = dataclasses.asdict(data)
+        else:
+            dump_data = data  # type: ignore[assignment]
         with tempfile.NamedTemporaryFile(
             mode="wb", suffix=".toml", dir=path.parent, delete=False
         ) as tmp:

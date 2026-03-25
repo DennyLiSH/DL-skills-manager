@@ -56,8 +56,8 @@ def list_skills(
                 with skill_yaml.open("rb") as f:
                     data = load_toml(f)
                     description = data.get("description", "")
-            except TOMLDecodeError:
-                warnings.append(f"Skipping malformed {skill_yaml}")
+            except TOMLDecodeError as e:
+                warnings.append(f"Skipping malformed {skill_yaml}: {e}")
 
         skills.append(
             SkillInfo(

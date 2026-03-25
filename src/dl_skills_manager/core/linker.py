@@ -9,13 +9,17 @@ __all__ = [
 import errno
 import shutil
 import sys
+from enum import IntEnum
 from pathlib import Path
 
 from dl_skills_manager.core.exceptions import LinkError
 
-# Windows error codes for privilege/access issues
-WINDOWS_ERROR_ACCESS_DENIED = 5
-WINDOWS_ERROR_PRIVILEGE_NOT_HELD = 1314
+
+class WindowsError(IntEnum):
+    """Windows error codes for privilege/access issues."""
+
+    ACCESS_DENIED = 5
+    PRIVILEGE_NOT_HELD = 1314
 
 
 def _is_permission_error(e: OSError) -> bool:
@@ -31,8 +35,8 @@ def _is_permission_error(e: OSError) -> bool:
     # Windows-specific: symlink privilege error (error codes stored in exception args)
     if sys.platform == "win32" and e.winerror is not None:
         return e.winerror in (
-            WINDOWS_ERROR_ACCESS_DENIED,
-            WINDOWS_ERROR_PRIVILEGE_NOT_HELD,
+            WindowsError.ACCESS_DENIED,
+            WindowsError.PRIVILEGE_NOT_HELD,
         )
     return False
 

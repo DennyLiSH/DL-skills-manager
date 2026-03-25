@@ -76,6 +76,6 @@ def bump(name: str, repo: str | None) -> None:
     )
 
     # Atomic write using shared function
-    atomic_write_toml(skill_yaml_path, updated_data)  # type: ignore[arg-type]
+    atomic_write_toml(skill_yaml_path, updated_data)
 
     click.echo(f"Created new dev version: {name}@{version_str}")
