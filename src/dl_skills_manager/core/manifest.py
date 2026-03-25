@@ -135,6 +135,10 @@ def _locked_file(path: Path, mode: str) -> Generator[tuple[IO[Any], Path]]:
     Uses fcntl on Unix and msvcrt on Windows for cross-platform support.
     Lock files are cleaned up after the context exits.
 
+    Note:
+        File locking may not work reliably on network filesystems (NFS, SMB, etc.).
+        The lock is best-effort and not a guarantee of atomicity across network mounts.
+
     Args:
         path: Path to the file to lock.
         mode: File mode ('r' or 'rb' for reading, 'w' or 'wb' for writing).

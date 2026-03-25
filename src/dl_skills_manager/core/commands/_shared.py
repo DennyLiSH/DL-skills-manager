@@ -132,6 +132,8 @@ def validate_skill_name(name: str) -> None:
     # Check path traversal patterns first for proper error messages
     if ".." in name or name.startswith(("~", "/", "\\", "$")):
         raise ValueError(f"Invalid skill name: {name}")
+    if "/" in name or "\\" in name:
+        raise ValueError(f"Invalid skill name: {name}")
     if not all(c.isalnum() or c in "-_" for c in name):
         raise ValueError("Skill name must be alphanumeric, hyphens, or underscores")
 
@@ -269,9 +271,10 @@ def atomic_write_toml(path: Path, data: Mapping[str, object] | object) -> None:
     except OSError as e:
         raise WriteError(f"Failed to write {path}") from e
     finally:
-        # Clean up temp file if it still exists (replace may have failed)
+        # Clean up temp file if it still exists (replace may have failed).
+        # Only ignore FileNotFoundError - other errors should be surfaced.
         if tmp_path is not None:
-            with suppress(OSError):
+            with suppress(FileNotFoundError):
                 tmp_path.unlink()
 
 
