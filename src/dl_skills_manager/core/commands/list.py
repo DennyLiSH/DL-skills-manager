@@ -9,25 +9,26 @@ from tomllib import load as load_toml
 import click
 
 from dl_skills_manager.core.commands._shared import resolve_repo_path
-from dl_skills_manager.core.config import get_default_repo_path
+from dl_skills_manager.core.config import get_default_repo_path, load_repo_config
 from dl_skills_manager.core.types import SkillInfo
 
 
 def list_skills(
-    repo_path: Path | None = None,
+    config_path: Path | None = None,
 ) -> tuple[list[SkillInfo], list[str]]:
     """List all skills in the repository.
 
     Args:
-        repo_path: Path to the repository. Defaults to ~/.skills-repo.
+        config_path: Path to the config directory. Defaults to ~/.skill-sync.
 
     Returns:
         Tuple of (skills list, warnings list).
     """
-    if repo_path is None:
-        repo_path = get_default_repo_path()
+    if config_path is None:
+        config_path = get_default_repo_path()
 
-    skills_dir = repo_path / "skills"
+    config = load_repo_config(config_path)
+    skills_dir = config.skills_path
     if not skills_dir.exists():
         return [], []
 
@@ -75,13 +76,15 @@ def list_skills(
     "--repo",
     type=click.Path(),
     default=None,
-    help="Path to skills repository (default: ~/.skills-base)",
+    help="Path to config directory (default: ~/.skill-sync)",
 )
 def list_skills_cmd(repo: str | None) -> None:
     """List all available skills in the repository."""
-    repo_path = resolve_repo_path(repo)
+    config_path = resolve_repo_path(repo)
+    config = load_repo_config(config_path)
+    skills_path = config.skills_path
 
-    skills, warnings = list_skills(repo_path)
+    skills, warnings = list_skills(config_path)
 
     for warning in warnings:
         click.echo(f"Warning: {warning}", err=True)
@@ -90,7 +93,7 @@ def list_skills_cmd(repo: str | None) -> None:
         click.echo("No skills found. Run 'skill-sync init' first.")
         return
 
-    click.echo(f"Skills in {repo_path}:")
+    click.echo(f"Skills in {skills_path}:")
     click.echo("")
 
     for skill in skills:

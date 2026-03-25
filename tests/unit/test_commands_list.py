@@ -17,32 +17,37 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def initialized_repo(tmp_path: Path) -> Path:
-    """Create an initialized repository with some skills."""
-    repo_path = tmp_path / ".skills-repo"
-    repo_path.mkdir()
-    (repo_path / "skills").mkdir()
-    (repo_path / "templates").mkdir()
+    """Create an initialized repository with some skills.
 
-    # Create config.toml
-    config_path = repo_path / "config.toml"
+    Creates the new architecture:
+    - tmp_path/.skill-sync/config.toml (config dir)
+    - tmp_path/.skill-sync/skills/ (skills storage)
+    """
+    config_dir = tmp_path / ".skill-sync"
+    config_dir.mkdir()
+    skills_dir = config_dir / "skills"
+    skills_dir.mkdir()
+
+    # Create config.toml with skills_path
+    config_path = config_dir / "config.toml"
     with config_path.open("wb") as f:
         tomli_w.dump(
             {
-                "repo": {"name": "test", "path": str(repo_path)},
+                "repo": {"name": "test", "skills_path": str(skills_dir)},
                 "settings": {"default_link_mode": "symlink", "fallback_to_copy": True},
             },
             f,
         )
 
     # Create a test skill
-    skill_dir = repo_path / "skills" / "test-skill"
+    skill_dir = skills_dir / "test-skill"
     skill_dir.mkdir()
     (skill_dir / "v2026.03.23").mkdir()
     (skill_dir / "skill.yaml").write_text(
         "name = 'test-skill'\ndescription = 'A test skill'\n"
     )
 
-    return repo_path
+    return config_dir
 
 
 class TestListSkills:
@@ -50,7 +55,22 @@ class TestListSkills:
 
     def test_list_skills_empty(self, tmp_path: Path) -> None:
         """Test list_skills returns empty list when no skills."""
-        skills, warnings = list_skills(tmp_path)
+        # Create proper config structure
+        config_dir = tmp_path / ".skill-sync"
+        config_dir.mkdir()
+        skills_dir = config_dir / "skills"
+        skills_dir.mkdir()
+        config_path = config_dir / "config.toml"
+        with config_path.open("wb") as f:
+            tomli_w.dump(
+                {
+                    "repo": {"name": "test", "skills_path": str(skills_dir)},
+                    "settings": {"default_link_mode": "symlink", "fallback_to_copy": True},
+                },
+                f,
+            )
+
+        skills, warnings = list_skills(config_dir)
         assert skills == []
         assert warnings == []
 

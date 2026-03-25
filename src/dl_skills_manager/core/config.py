@@ -26,6 +26,7 @@ class RepoConfig:
 
     name: str
     path: Path
+    skills_path: Path
     default_link_mode: LinkMode
     fallback_to_copy: bool
 
@@ -36,15 +37,15 @@ def expand_path(path_str: str) -> Path:
 
 
 def get_default_repo_path() -> Path:
-    """Get the default skills repository path."""
-    return Path.home() / ".skills-base"
+    """Get the default config directory path."""
+    return Path.home() / ".skill-sync"
 
 
 def load_repo_config(repo_path: Path | None = None) -> RepoConfig:
     """Load repository configuration from config.toml.
 
     Args:
-        repo_path: Path to the repository. Defaults to ~/.skills-base.
+        repo_path: Path to the config directory. Defaults to ~/.skill-sync.
 
     Returns:
         RepoConfig instance.
@@ -76,19 +77,28 @@ def load_repo_config(repo_path: Path | None = None) -> RepoConfig:
             "Must be 'symlink' or 'copy'."
         )
 
+    # Load skills_path from config, default to ~/.skill-sync/skills/
+    skills_path_str = repo_data.get("skills_path", None)
+    if skills_path_str:
+        skills_path = expand_path(skills_path_str)
+    else:
+        skills_path = repo_path / "skills"
+
     return RepoConfig(
         name=repo_data.get("name", "my-skills"),
-        path=expand_path(repo_data.get("path", str(repo_path))),
+        path=repo_path,
+        skills_path=skills_path,
         default_link_mode=default_link_mode,
         fallback_to_copy=settings_data.get("fallback_to_copy", True),
     )
 
 
-def create_default_config(repo_path: Path) -> RepoConfig:
+def create_default_config(repo_path: Path, skills_path: Path) -> RepoConfig:
     """Create default repository configuration.
 
     Args:
-        repo_path: Path to the repository.
+        repo_path: Path to the config directory.
+        skills_path: Path to the skills storage directory.
 
     Returns:
         Default RepoConfig instance.
@@ -96,6 +106,7 @@ def create_default_config(repo_path: Path) -> RepoConfig:
     return RepoConfig(
         name="my-skills",
         path=repo_path,
+        skills_path=skills_path,
         default_link_mode="symlink",
         fallback_to_copy=True,
     )

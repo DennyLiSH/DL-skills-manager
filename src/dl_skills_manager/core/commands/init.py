@@ -13,10 +13,10 @@ from dl_skills_manager.core.exceptions import RepoAlreadyExistsError
 
 @click.command()
 @click.option(
-    "--path",
+    "--skills-path",
     type=click.Path(),
     default=None,
-    help="Path to initialize repository (default: ~/.skills-base)",
+    help="Path to skills storage (default: ~/.skill-sync/skills/)",
 )
 @click.option(
     "--link-mode",
@@ -24,39 +24,45 @@ from dl_skills_manager.core.exceptions import RepoAlreadyExistsError
     default="symlink",
     help="Default link mode for skill installation (default: symlink)",
 )
-def init(path: str | None, link_mode: str) -> None:
+def init(skills_path: str | None, link_mode: str) -> None:
     """Initialize a new skills repository.
 
-    Creates the repository directory structure and config.toml.
+    Creates the config directory at ~/.skill-sync/ and skills storage directory.
     """
-    if path is None:
-        repo_path = get_default_repo_path()
+    # Always use ~/.skill-sync/ as config directory
+    config_path = get_default_repo_path()
+
+    if config_path.exists():
+        raise RepoAlreadyExistsError(f"Config directory already exists at: {config_path}")
+
+    # Determine skills storage path
+    if skills_path is None:
+        skills_storage_path = config_path / "skills"
     else:
-        repo_path = Path(path).expanduser().resolve()
+        skills_storage_path = Path(skills_path).expanduser().resolve()
 
-    if repo_path.exists():
-        raise RepoAlreadyExistsError(f"Repository already exists at: {repo_path}")
-
-    # Create directory structure atomically
+    # Create config directory
     try:
-        repo_path.mkdir(parents=True, exist_ok=True)
-        (repo_path / "skills").mkdir(parents=True, exist_ok=True)
-        (repo_path / "templates").mkdir(parents=True, exist_ok=True)
+        config_path.mkdir(parents=True, exist_ok=True)
     except OSError as e:
         raise RepoAlreadyExistsError(
-            f"Failed to create repository directory: {e}"
+            f"Failed to create config directory: {e}"
         ) from e
 
-    # Verify skills directory was created
-    if not (repo_path / "skills").exists():
-        raise RepoAlreadyExistsError("Failed to create skills directory")
+    # Create skills storage directory
+    try:
+        skills_storage_path.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        raise RepoAlreadyExistsError(
+            f"Failed to create skills directory: {e}"
+        ) from e
 
     # Create config.toml
-    config_path = repo_path / "config.toml"
+    config_file = config_path / "config.toml"
     config_data = {
         "repo": {
             "name": "my-skills",
-            "path": str(repo_path),
+            "skills_path": str(skills_storage_path),
         },
         "settings": {
             "default_link_mode": link_mode,
@@ -64,7 +70,8 @@ def init(path: str | None, link_mode: str) -> None:
         },
     }
 
-    with config_path.open("wb") as f:
+    with config_file.open("wb") as f:
         tomli_w.dump(config_data, f)
 
-    click.echo(f"Initialized skills repository at: {repo_path}")
+    click.echo(f"Initialized config at: {config_path}")
+    click.echo(f"Skills storage at: {skills_storage_path}")

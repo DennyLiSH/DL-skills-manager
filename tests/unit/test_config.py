@@ -21,7 +21,7 @@ class TestExpandPath:
 
     def test_expand_path_with_tilde(self) -> None:
         """Test that ~ is expanded to user home."""
-        result = expand_path("~/.skills-repo")
+        result = expand_path("~/.skill-sync")
         assert str(result).startswith(str(Path.home()))
         assert "~" not in str(result)
 
@@ -35,9 +35,9 @@ class TestGetDefaultRepoPath:
     """Tests for get_default_repo_path function."""
 
     def test_returns_path_with_tilde(self) -> None:
-        """Test default path contains .skills-repo."""
+        """Test default path contains .skill-sync."""
         result = get_default_repo_path()
-        assert ".skills-base" in str(result)
+        assert ".skill-sync" in str(result)
 
 
 class TestCreateDefaultConfig:
@@ -45,12 +45,14 @@ class TestCreateDefaultConfig:
 
     def test_returns_default_values(self) -> None:
         """Test default config has expected values."""
-        repo_path = Path("/test/repo")
-        config = create_default_config(repo_path)
+        repo_path = Path("/test/.skill-sync")
+        skills_path = Path("/test/.skill-sync/skills")
+        config = create_default_config(repo_path, skills_path)
 
         assert isinstance(config, RepoConfig)
         assert config.name == "my-skills"
         assert config.path == repo_path
+        assert config.skills_path == skills_path
         assert config.default_link_mode == "symlink"
         assert config.fallback_to_copy is True
 
@@ -66,10 +68,12 @@ class TestLoadRepoConfig:
     def test_loads_valid_config(self, tmp_path: Path) -> None:
         """Test loading a valid config.toml."""
         config_path = tmp_path / "config.toml"
+        skills_path = tmp_path / "skills"
+        skills_path.mkdir()
         config_path.write_text(
             """[repo]
 name = "test-repo"
-path = "~/.test-repo"
+skills_path = "/tmp/skills"
 
 [settings]
 default_link_mode = "copy"
@@ -80,6 +84,7 @@ fallback_to_copy = false
         config = load_repo_config(tmp_path)
 
         assert config.name == "test-repo"
+        assert config.skills_path == Path("/tmp/skills")
         assert config.default_link_mode == "copy"
         assert config.fallback_to_copy is False
 
@@ -97,3 +102,5 @@ name = "minimal-repo"
         assert config.name == "minimal-repo"
         assert config.default_link_mode == "symlink"
         assert config.fallback_to_copy is True
+        # skills_path defaults to repo_path / "skills"
+        assert config.skills_path == tmp_path / "skills"

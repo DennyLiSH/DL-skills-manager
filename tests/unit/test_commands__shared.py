@@ -24,8 +24,9 @@ class TestFindSkillDir:
 
     def test_find_skill_dir_valid(self, skills_repo_dir: Path) -> None:
         """Test finding an existing skill."""
+        # skills_repo_dir is .skill-sync with config.toml
+        # Create a skill in the skills directory
         skills_dir = skills_repo_dir / "skills"
-        skills_dir.mkdir()
         skill_dir = skills_dir / "test-skill"
         skill_dir.mkdir()
 
@@ -35,7 +36,7 @@ class TestFindSkillDir:
     def test_find_skill_dir_not_found(self, skills_repo_dir: Path) -> None:
         """Test error when skill does not exist."""
         skills_dir = skills_repo_dir / "skills"
-        skills_dir.mkdir()
+        # No skills created
 
         with pytest.raises(SkillNotFoundError, match="not found"):
             find_skill_dir(skills_repo_dir, "nonexistent")
@@ -53,9 +54,7 @@ class TestFindSkillDir:
         self, skills_repo_dir: Path, skill_name: str, expected_match: str
     ) -> None:
         """Test path traversal attempts are rejected."""
-        skills_dir = skills_repo_dir / "skills"
-        skills_dir.mkdir()
-
+        # skills_repo_dir fixture already creates skills/ directory
         with pytest.raises(ValueError, match=expected_match):
             find_skill_dir(skills_repo_dir, skill_name)
 
@@ -94,7 +93,6 @@ class TestFindVersionDir:
     def test_find_version_dir_specific_version(self, skills_repo_dir: Path) -> None:
         """Test finding a specific version directory."""
         skills_dir = skills_repo_dir / "skills"
-        skills_dir.mkdir()
         skill_dir = skills_dir / "test-skill"
         skill_dir.mkdir()
         version_dir = skill_dir / "v2026.03.23"
@@ -106,7 +104,6 @@ class TestFindVersionDir:
     def test_find_version_dir_specific_not_found(self, skills_repo_dir: Path) -> None:
         """Test error when specific version does not exist."""
         skills_dir = skills_repo_dir / "skills"
-        skills_dir.mkdir()
         skill_dir = skills_dir / "test-skill"
         skill_dir.mkdir()
 
@@ -116,7 +113,6 @@ class TestFindVersionDir:
     def test_find_version_dir_no_versions(self, skills_repo_dir: Path) -> None:
         """Test error when no versions exist."""
         skills_dir = skills_repo_dir / "skills"
-        skills_dir.mkdir()
         skill_dir = skills_dir / "test-skill"
         skill_dir.mkdir()
 
@@ -126,7 +122,6 @@ class TestFindVersionDir:
     def test_find_version_dir_with_malformed_yaml(self, skills_repo_dir: Path) -> None:
         """Test that malformed skill.yaml falls back to version directory."""
         skills_dir = skills_repo_dir / "skills"
-        skills_dir.mkdir()
         skill_dir = skills_dir / "test-skill"
         skill_dir.mkdir()
         version_dir = skill_dir / "v2026.03.23"

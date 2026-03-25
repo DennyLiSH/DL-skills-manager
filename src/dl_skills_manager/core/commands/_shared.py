@@ -142,7 +142,7 @@ def find_skill_dir(repo_path: Path, name: str) -> Path:
     """Find skill directory in repository.
 
     Args:
-        repo_path: Path to the repository.
+        repo_path: Path to the config directory (where config.toml is located).
         name: Skill name.
 
     Returns:
@@ -154,10 +154,14 @@ def find_skill_dir(repo_path: Path, name: str) -> Path:
     """
     # Validate skill name to prevent path traversal and ensure format consistency
     validate_skill_name(name)
-    skill_dir = repo_path / "skills" / name
+
+    # Load config to get skills_path
+    config = load_repo_config(repo_path)
+    skills_base = config.skills_path.resolve()
+    skill_dir = skills_base / name
+
     # Verify the resolved path is still within the skills directory
     try:
-        skills_base = (repo_path / "skills").resolve()
         resolved_skill_dir = skill_dir.resolve()
     except OSError as e:
         raise ValueError(f"Could not resolve skill path: {skill_dir}") from e
