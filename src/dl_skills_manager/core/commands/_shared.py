@@ -7,6 +7,7 @@ repository path resolution, skill directory lookup, and version parsing.
 import dataclasses
 import logging
 import os
+import shutil
 import tempfile
 from collections.abc import Mapping
 from contextlib import suppress

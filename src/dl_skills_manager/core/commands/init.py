@@ -79,9 +79,6 @@ def init(skills_path: str | None, link_mode: str) -> None:
     # Always use ~/.skill-sync/ as config directory
     config_path = get_default_repo_path()
 
-    if config_path.exists():
-        raise RepoAlreadyExistsError(f"Config directory already exists at: {config_path}")
-
     # Determine skills storage path
     if skills_path is None:
         # Default: create ~/.skill-sync/skills/ subdirectory
