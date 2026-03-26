@@ -4,7 +4,6 @@ __all__ = [
     "AppError",
     "ConfigError",
     "LinkError",
-    "ManifestError",
     "RepoAlreadyExistsError",
     "RepoNotInitializedError",
     "SkillAlreadyExistsError",
@@ -26,10 +25,6 @@ class ConfigError(AppError):
 
 class LinkError(AppError):
     """Symlink or copy operation error."""
-
-
-class ManifestError(AppError):
-    """Project manifest read or write error."""
 
 
 class SkillNotFoundError(AppError):

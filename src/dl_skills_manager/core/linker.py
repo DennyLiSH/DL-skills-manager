@@ -1,6 +1,7 @@
 """Cross-platform symlink management."""
 
 __all__ = [
+    "copy_skill_dir",
     "create_link",
     "is_link_valid",
     "remove_link",
@@ -63,6 +64,39 @@ def _resolve_source(source: Path) -> Path:
             raise LinkError(msg)
         return resolved
     return source
+
+
+def copy_skill_dir(source: Path, target: Path, *, force: bool = False) -> None:
+    """Copy a directory tree to target path.
+
+    Unlike create_link, this function ALWAYS copies without attempting
+    symlink creation. Used for cross-platform compatibility where symlinks
+    may not be available or desired.
+
+    Args:
+        source: Source directory to copy.
+        target: Target path for the copy.
+        force: If True, remove existing target before copying.
+
+    Raises:
+        LinkError: If the copy operation fails.
+    """
+    source = _resolve_source(source)
+
+    if not source.exists():
+        raise LinkError(f"Source does not exist: {source}")
+
+    if target.is_symlink() or target.exists():
+        if force:
+            remove_link(target)
+        else:
+            raise LinkError(f"Target already exists: {target}")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.copytree(source, target)
+    except OSError as e:
+        raise LinkError(f"Failed to copy directory: {e}") from e
 
 
 def create_link(source: Path, target: Path, *, force: bool = False) -> None:

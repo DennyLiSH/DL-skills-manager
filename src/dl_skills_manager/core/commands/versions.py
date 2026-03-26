@@ -2,8 +2,6 @@
 
 __all__ = ["versions"]
 
-from tomllib import load as load_toml
-
 import click
 
 from dl_skills_manager.core.commands._shared import find_skill_dir, resolve_repo_path
@@ -25,18 +23,7 @@ def versions(name: str, repo: str | None) -> None:
     # Find skill directory
     skill_dir = find_skill_dir(repo_path, name)
 
-    # Read skill.yaml for stable version info
-    skill_yaml_path = skill_dir / "skill.yaml"
-    stable_version = ""
-    current_version = ""
-
-    if skill_yaml_path.exists():
-        with skill_yaml_path.open("rb") as f:
-            data = load_toml(f)
-            stable_version = data.get("stable_version", "")
-            current_version = data.get("version", "")
-
-    # List all versions
+    # List all version directories
     version_dirs = [
         v for v in skill_dir.iterdir() if v.is_dir() and v.name.startswith("v")
     ]
@@ -49,13 +36,4 @@ def versions(name: str, repo: str | None) -> None:
     click.echo("")
 
     for v_dir in sorted(version_dirs, reverse=True):
-        version_name = v_dir.name
-        markers: list[str] = []
-
-        if version_name == stable_version:
-            markers.append("stable")
-        if version_name == current_version:
-            markers.append("current")
-
-        marker_str = f" ({', '.join(markers)})" if markers else ""
-        click.echo(f"  {version_name}{marker_str}")
+        click.echo(f"  {v_dir.name}")

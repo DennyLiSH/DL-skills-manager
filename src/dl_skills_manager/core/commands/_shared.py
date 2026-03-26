@@ -13,8 +13,6 @@ from contextlib import suppress
 from dataclasses import is_dataclass
 from datetime import date
 from pathlib import Path
-from tomllib import TOMLDecodeError
-from tomllib import load as load_toml
 from typing import cast, overload
 
 import tomli_w
@@ -24,18 +22,11 @@ from dl_skills_manager.core.config import get_default_repo_path, load_repo_confi
 from dl_skills_manager.core.exceptions import (
     ConfigError,
     LinkError,
-    ManifestError,
     SkillNotFoundError,
     VersionNotFoundError,
     WriteError,
 )
-from dl_skills_manager.core.linker import create_link, remove_link
-from dl_skills_manager.core.manifest import (
-    add_skill_to_manifest,
-    read_project_manifest,
-    write_project_manifest,
-)
-from dl_skills_manager.core.types import ProjectManifest, SkillEntry
+from dl_skills_manager.core.linker import copy_skill_dir, create_link, remove_link
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +35,9 @@ __all__ = [
     "find_skill_dir",
     "find_version_dir",
     "format_version_date",
-    "install_skill_link",
+    "install_skill_copy",
     "resolve_repo_path",
-    "rollback_manifest_update",
+    "update_skill_copy",
     "validate_skill_name",
 ]
 
@@ -273,121 +264,80 @@ def atomic_write_toml(path: Path, data: Mapping[str, object] | object) -> None:
                 tmp_path.unlink()
 
 
-def rollback_manifest_update(
-    project_path: Path,
-    name: str,
-    project_skill_link: Path,
-    previous_source: str | None,
-    previous_version: str | None,
-    previous_link_target: Path | None = None,
-) -> None:
-    """Rollback a manifest update after a failed operation.
-
-    Removes the created link and restores the previous installation state.
-    Errors during rollback are logged but do not mask the original error.
-
-    Args:
-        project_path: Path to the project.
-        name: Skill name.
-        project_skill_link: Path to the created link/directory.
-        previous_source: Previous source path as string, or None.
-        previous_version: Previous version string, or None.
-        previous_link_target: Path to the previous link target, if any.
-    """
-    rollback_errors: list[str] = []
-
-    # Remove the new link
-    try:
-        remove_link(project_skill_link)
-    except LinkError as e:
-        rollback_errors.append(f"Failed to remove link: {e}")
-
-    # Restore the previous link if we have its target
-    if previous_link_target is not None:
-        try:
-            create_link(previous_link_target, project_skill_link, force=False)
-        except LinkError as e:
-            rollback_errors.append(f"Failed to restore previous link: {e}")
-
-    if previous_source and previous_version:
-        try:
-            add_skill_to_manifest(
-                project_path, name, Path(previous_source), previous_version
-            )
-        except ManifestError as e:
-            rollback_errors.append(f"Failed to restore manifest entry: {e}")
-    else:
-        # No previous installation, remove from manifest entirely
-        try:
-            manifest = read_project_manifest(project_path)
-            if name in manifest.skills:
-                del manifest.skills[name]
-                write_project_manifest(project_path, manifest)
-        except ManifestError as e:
-            rollback_errors.append(f"Failed to update manifest: {e}")
-
-    if rollback_errors:
-        logger.error(
-            "Rollback completed with errors for skill '%s': %s",
-            name,
-            "; ".join(rollback_errors),
-        )
-
-
-def install_skill_link(
+def install_skill_copy(
     project_path: Path,
     name: str,
     skill_dir: Path,
     version_dir: Path,
-    manifest: ProjectManifest,
-    previous_source: str | None,
-    previous_version: str | None,
 ) -> Path:
-    """Create a skill link and update manifest with rollback on failure.
+    """Copy a skill into the project (for fresh installs).
 
-    This is a shared implementation for both install and update commands.
+    Always uses directory copy. The target folder name is just {name},
+    without any version suffix.
+
+    Args:
+        project_path: Path to the project.
+        name: Skill name (used for target folder name).
+        skill_dir: Path to the skill directory in the repo.
+        version_dir: Path to the version directory to copy.
+
+    Returns:
+        Path to the created skill copy.
+
+    Raises:
+        LinkError: If copy operation fails.
+    """
+    project_skill_copy = project_path / ".claude" / "skills" / name
+
+    copy_skill_dir(version_dir, project_skill_copy, force=True)
+
+    return project_skill_copy
+
+
+def update_skill_copy(
+    project_path: Path,
+    name: str,
+    skill_dir: Path,
+    version_dir: Path,
+) -> Path:
+    """Update a skill with backup/restore protection.
+
+    Creates a backup before updating. If the update fails, restores
+    from backup. Backup is deleted on success.
 
     Args:
         project_path: Path to the project.
         name: Skill name.
         skill_dir: Path to the skill directory in the repo.
-        version_dir: Path to the version directory to link.
-        manifest: The project manifest (already loaded by caller).
-        previous_source: Previous source path for rollback, or None.
-        previous_version: Previous version for rollback, or None.
+        version_dir: Path to the version directory to copy.
 
     Returns:
-        Path to the created skill link.
+        Path to the updated skill copy.
 
     Raises:
-        LinkError: If link creation fails.
-        ManifestError: If manifest update fails.
+        LinkError: If the update operation fails.
     """
-    project_skill_link = project_path / ".claude" / "skills" / name
-    actual_version = version_dir.name
+    project_skill_path = project_path / ".claude" / "skills" / name
+    backup_path = project_path / ".claude" / "skills" / f"{name}.bk"
 
-    # Save previous link target before create_link removes it (with force=True)
-    previous_link_target: Path | None = None
-    if project_skill_link.exists() or project_skill_link.is_symlink():
-        previous_link_target = project_skill_link.resolve()
+    # Remove any stale backup from previous failed update
+    if backup_path.exists():
+        shutil.rmtree(backup_path)
 
-    create_link(version_dir, project_skill_link, force=True)
+    # Create backup of current installation if it exists
+    if project_skill_path.exists():
+        shutil.copytree(project_skill_path, backup_path)
 
     try:
-        # Update manifest with new entry
-        manifest.skills[name] = SkillEntry(
-            source=str(skill_dir), version=actual_version
-        )
-        write_project_manifest(project_path, manifest)
-    except ManifestError:
-        rollback_manifest_update(
-            project_path,
-            name,
-            project_skill_link,
-            previous_source,
-            previous_version,
-            previous_link_target,
-        )
+        copy_skill_dir(version_dir, project_skill_path, force=True)
+        # Success - delete backup
+        if backup_path.exists():
+            shutil.rmtree(backup_path)
+        return project_skill_path
+    except LinkError:
+        # Failure - restore from backup
+        if backup_path.exists():
+            if project_skill_path.exists():
+                shutil.rmtree(project_skill_path)
+            shutil.move(str(backup_path), str(project_skill_path))
         raise
-
-    return project_skill_link

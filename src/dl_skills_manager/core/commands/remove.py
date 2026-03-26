@@ -7,7 +7,6 @@ from pathlib import Path
 import click
 
 from dl_skills_manager.core.linker import remove_link
-from dl_skills_manager.core.manifest import remove_skill_from_manifest
 
 
 @click.command()
@@ -16,7 +15,7 @@ from dl_skills_manager.core.manifest import remove_skill_from_manifest
 def remove(name: str, project: str) -> None:
     """Remove an installed skill from the current project.
 
-    Removes the symlink/copy and updates the project's skills.toml.
+    Removes the symlink/copy.
     """
     project_path = Path(project).resolve()
 
@@ -26,14 +25,9 @@ def remove(name: str, project: str) -> None:
     # Check if skill is installed
     if not (project_skill_path.exists() or project_skill_path.is_symlink()):
         click.echo(f"Skill '{name}' is not installed in this project.")
-        # Remove from manifest in case it's orphaned
-        remove_skill_from_manifest(project_path, name)
         return
 
-    # Update manifest first (safer - link removal is irreversible)
-    remove_skill_from_manifest(project_path, name)
-
-    # Then remove the link
+    # Remove the link
     remove_link(project_skill_path)
 
     click.echo(f"Removed {name} from project.")
