@@ -4,24 +4,15 @@ __all__ = ["versions"]
 
 import click
 
-from dl_skills_manager.core.commands._shared import find_skill_dir, resolve_repo_path
+from dl_skills_manager.core.commands._shared import find_skill_dir
 
 
 @click.command()
 @click.argument("name")
-@click.option(
-    "--repo",
-    type=click.Path(),
-    default=None,
-    help="Path to skills repository (default: ~/.skills-repo)",
-)
-def versions(name: str, repo: str | None) -> None:
+def versions(name: str) -> None:
     """List all versions of a skill."""
-    # Determine repo path
-    repo_path = resolve_repo_path(repo)
-
     # Find skill directory
-    skill_dir = find_skill_dir(repo_path, name)
+    skill_dir = find_skill_dir(name)
 
     # List all version directories
     version_dirs = [

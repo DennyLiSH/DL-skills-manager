@@ -29,7 +29,6 @@ def repo_with_skill(tmp_path: Path) -> Path:
                 "basic": {"path": str(repo_path), "skills_store": str(repo_path / "skills")},
                 "settings": {
                     "default_link_mode": "symlink",
-                    "fallback_to_copy": True,
                 },
             },
             f,
@@ -77,18 +76,16 @@ class TestInstallCommand:
         """Test installing a skill to a project."""
         from unittest.mock import patch
 
-        from dl_skills_manager.core.config import RepoConfig
+        from dl_skills_manager.core.config import SkillSyncConfig
 
-        mock_config = RepoConfig(
-            name="",
+        mock_config = SkillSyncConfig(
             path=repo_with_skill,
             skills_store=repo_with_skill / "skills",
             default_link_mode="symlink",
-            fallback_to_copy=True,
         )
 
         with patch(
-            "dl_skills_manager.core.commands.install.load_repo_config",
+            "dl_skills_manager.core.commands.install.load_config",
             return_value=mock_config,
         ):
             result = cli_runner.invoke(
@@ -113,18 +110,16 @@ class TestInstallCommand:
         """Test installing a skill that doesn't exist."""
         from unittest.mock import patch
 
-        from dl_skills_manager.core.config import RepoConfig
+        from dl_skills_manager.core.config import SkillSyncConfig
 
-        mock_config = RepoConfig(
-            name="",
+        mock_config = SkillSyncConfig(
             path=repo_with_skill,
             skills_store=repo_with_skill / "skills",
             default_link_mode="symlink",
-            fallback_to_copy=True,
         )
 
         with patch(
-            "dl_skills_manager.core.commands.install.load_repo_config",
+            "dl_skills_manager.core.commands.install.load_config",
             return_value=mock_config,
         ):
             result = cli_runner.invoke(
@@ -151,18 +146,16 @@ class TestInstallCommand:
 
         from unittest.mock import patch
 
-        from dl_skills_manager.core.config import RepoConfig
+        from dl_skills_manager.core.config import SkillSyncConfig
 
-        mock_config = RepoConfig(
-            name="",
+        mock_config = SkillSyncConfig(
             path=repo_with_skill,
             skills_store=repo_with_skill / "skills",
             default_link_mode="symlink",
-            fallback_to_copy=True,
         )
 
         with patch(
-            "dl_skills_manager.core.commands.install.load_repo_config",
+            "dl_skills_manager.core.commands.install.load_config",
             return_value=mock_config,
         ):
             result = cli_runner.invoke(

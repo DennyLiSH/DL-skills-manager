@@ -127,7 +127,6 @@ def init(skills_path: str | None, link_mode: str) -> None:
         },
         "settings": {
             "default_link_mode": link_mode,
-            "fallback_to_copy": True,
         },
     }
 

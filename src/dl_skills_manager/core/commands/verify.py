@@ -12,7 +12,6 @@ import click
 from dl_skills_manager.core.commands._shared import (
     atomic_write_toml,
     find_skill_dir,
-    resolve_repo_path,
 )
 from dl_skills_manager.core.exceptions import (
     VersionNotFoundError,
@@ -23,22 +22,13 @@ from dl_skills_manager.core.manifest import read_skill_yaml
 
 @click.command()
 @click.argument("name")
-@click.option(
-    "--repo",
-    type=click.Path(),
-    default=None,
-    help="Path to skills repository (default: ~/.skills-repo)",
-)
-def verify(name: str, repo: str | None) -> None:
+def verify(name: str) -> None:
     """Promote a development version to stable.
 
     Renames v{date}-dev/ to v{date}/ and updates skill.yaml stable_version.
     """
-    # Determine repo path
-    repo_path = resolve_repo_path(repo)
-
     # Find skill directory
-    skill_dir = find_skill_dir(repo_path, name)
+    skill_dir = find_skill_dir(name)
 
     # Find dev version
     dev_dir: Path | None = None

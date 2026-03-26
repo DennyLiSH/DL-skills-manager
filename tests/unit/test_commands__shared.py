@@ -10,7 +10,6 @@ import pytest
 from dl_skills_manager.core.commands._shared import (
     find_skill_dir,
     find_version_dir,
-    resolve_repo_path,
 )
 from dl_skills_manager.core.exceptions import (
     ConfigError,
@@ -30,7 +29,7 @@ class TestFindSkillDir:
         skill_dir = skills_dir / "test-skill"
         skill_dir.mkdir()
 
-        result = find_skill_dir(skills_repo_dir, "test-skill")
+        result = find_skill_dir("test-skill")
         assert result == skill_dir
 
     def test_find_skill_dir_not_found(self, skills_repo_dir: Path) -> None:
@@ -39,7 +38,7 @@ class TestFindSkillDir:
         # No skills created
 
         with pytest.raises(SkillNotFoundError, match="not found"):
-            find_skill_dir(skills_repo_dir, "nonexistent")
+            find_skill_dir("nonexistent")
 
     @pytest.mark.parametrize(
         "skill_name,expected_match",
@@ -56,35 +55,7 @@ class TestFindSkillDir:
         """Test path traversal attempts are rejected."""
         # skills_repo_dir fixture already creates skills/ directory
         with pytest.raises(ValueError, match=expected_match):
-            find_skill_dir(skills_repo_dir, skill_name)
-
-
-class TestResolveRepoPath:
-    """Tests for resolve_repo_path function."""
-
-    def test_resolve_repo_path_with_config_error(self, tmp_path: Path) -> None:
-        """Test that ConfigError is handled and non-existent path raises."""
-        with patch(
-            "dl_skills_manager.core.commands._shared.load_repo_config",
-            side_effect=ConfigError("Not a config"),
-        ):
-            # When path doesn't exist, should raise ConfigError
-            non_existent = tmp_path / "nonexistent"
-            with pytest.raises(ConfigError, match="does not exist"):
-                resolve_repo_path(str(non_existent))
-
-    def test_resolve_repo_path_with_existing_non_config_dir(
-        self, tmp_path: Path
-    ) -> None:
-        """Test that existing directory without config raises ConfigError."""
-        existing_dir = tmp_path / "existing-repo"
-        existing_dir.mkdir()
-
-        with patch(
-            "dl_skills_manager.core.commands._shared.load_repo_config",
-            side_effect=ConfigError("Not a config"),
-        ), pytest.raises(ConfigError, match="not initialized"):
-            resolve_repo_path(str(existing_dir))
+            find_skill_dir(skill_name)
 
 
 class TestFindVersionDir:

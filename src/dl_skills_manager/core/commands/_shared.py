@@ -18,7 +18,7 @@ from typing import cast, overload
 import tomli_w
 from packaging.version import InvalidVersion, Version
 
-from dl_skills_manager.core.config import get_default_repo_path, load_repo_config
+from dl_skills_manager.core.config import get_default_repo_path, load_config
 from dl_skills_manager.core.exceptions import (
     ConfigError,
     LinkError,
@@ -36,7 +36,6 @@ __all__ = [
     "find_version_dir",
     "format_version_date",
     "install_skill_copy",
-    "resolve_repo_path",
     "update_skill_copy",
     "validate_skill_name",
 ]
@@ -84,33 +83,6 @@ def _parse_version(v: str) -> tuple[int, int]:
         return (0, 0)
 
 
-def resolve_repo_path(repo: str | None) -> Path:
-    """Resolve repository path from CLI option.
-
-    Args:
-        repo: CLI --repo option value.
-
-    Returns:
-        Resolved repository path.
-
-    Raises:
-        ConfigError: If the repository path does not exist or config.toml is missing.
-    """
-    repo_path = Path(repo).expanduser().resolve() if repo else get_default_repo_path()
-
-    try:
-        config = load_repo_config(repo_path)
-        return config.path
-    except ConfigError as e:
-        if not repo_path.exists():
-            raise ConfigError(f"Repository path does not exist: {repo_path}") from e
-        # Path exists but config.toml is missing - this is an error
-        raise ConfigError(
-            f"Repository at {repo_path} is not initialized. "
-            "Run 'skill-sync init' first."
-        ) from e
-
-
 def validate_skill_name(name: str) -> None:
     """Validate skill name format.
 
@@ -129,11 +101,10 @@ def validate_skill_name(name: str) -> None:
         raise ValueError("Skill name must be alphanumeric, hyphens, or underscores")
 
 
-def find_skill_dir(repo_path: Path, name: str) -> Path:
+def find_skill_dir(name: str) -> Path:
     """Find skill directory in repository.
 
     Args:
-        repo_path: Path to the config directory (where config.toml is located).
         name: Skill name.
 
     Returns:
@@ -147,7 +118,7 @@ def find_skill_dir(repo_path: Path, name: str) -> Path:
     validate_skill_name(name)
 
     # Load config to get skills_store
-    config = load_repo_config(repo_path)
+    config = load_config()
     skills_base = config.skills_store.resolve()
     skill_dir = skills_base / name
 

@@ -6,26 +6,17 @@ from pathlib import Path
 
 import click
 
-from dl_skills_manager.core.commands._shared import resolve_repo_path
-from dl_skills_manager.core.config import get_default_repo_path, load_repo_config
+from dl_skills_manager.core.config import load_config
 from dl_skills_manager.core.types import SkillInfo
 
 
-def list_skills(
-    config_path: Path | None = None,
-) -> tuple[list[SkillInfo], list[str]]:
+def list_skills() -> tuple[list[SkillInfo], list[str]]:
     """List all skills in the repository.
-
-    Args:
-        config_path: Path to the config directory. Defaults to ~/.skill-sync.
 
     Returns:
         Tuple of (skills list, warnings list).
     """
-    if config_path is None:
-        config_path = get_default_repo_path()
-
-    config = load_repo_config(config_path)
+    config = load_config()
     skills_dir = config.skills_store
     if not skills_dir.exists():
         return [], []
@@ -78,19 +69,12 @@ def list_skills(
 
 
 @click.command()
-@click.option(
-    "--repo",
-    type=click.Path(),
-    default=None,
-    help="Path to config directory (default: ~/.skill-sync)",
-)
-def list_skills_cmd(repo: str | None) -> None:
+def list_skills_cmd() -> None:
     """List all available skills in the repository."""
-    config_path = resolve_repo_path(repo)
-    config = load_repo_config(config_path)
+    config = load_config()
     skills_path = config.skills_store
 
-    skills, warnings = list_skills(config_path)
+    skills, warnings = list_skills()
 
     for warning in warnings:
         click.echo(f"Warning: {warning}", err=True)

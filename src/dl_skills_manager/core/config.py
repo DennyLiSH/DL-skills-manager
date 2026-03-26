@@ -2,11 +2,11 @@
 
 __all__ = [
     "LinkMode",
-    "RepoConfig",
+    "SkillSyncConfig",
     "create_default_config",
     "expand_path",
     "get_default_repo_path",
-    "load_repo_config",
+    "load_config",
 ]
 
 from dataclasses import dataclass
@@ -21,14 +21,12 @@ type LinkMode = Literal["symlink", "copy"]
 
 
 @dataclass(slots=True)
-class RepoConfig:
+class SkillSyncConfig:
     """Repository configuration."""
 
-    name: str
     path: Path
     skills_store: Path
-    default_link_mode: LinkMode
-    fallback_to_copy: bool
+    default_link_mode: LinkMode  # TBD
 
 
 def expand_path(path_str: str) -> Path:
@@ -41,20 +39,16 @@ def get_default_repo_path() -> Path:
     return Path.home() / ".skill-sync"
 
 
-def load_repo_config(repo_path: Path | None = None) -> RepoConfig:
+def load_config() -> SkillSyncConfig:
     """Load repository configuration from config.toml.
 
-    Args:
-        repo_path: Path to the config directory. Defaults to ~/.skill-sync.
-
     Returns:
-        RepoConfig instance.
+        SkillSyncConfig instance.
 
     Raises:
         ConfigError: If config.toml cannot be read or parsed.
     """
-    if repo_path is None:
-        repo_path = get_default_repo_path()
+    repo_path = get_default_repo_path()
 
     config_path = repo_path / "config.toml"
 
@@ -91,16 +85,14 @@ def load_repo_config(repo_path: Path | None = None) -> RepoConfig:
     else:
         path = repo_path
 
-    return RepoConfig(
-        name="",  # deprecated, kept for compatibility
+    return SkillSyncConfig(
         path=path,
         skills_store=skills_store,
         default_link_mode=default_link_mode,
-        fallback_to_copy=settings_data.get("fallback_to_copy", True),
     )
 
 
-def create_default_config(repo_path: Path, skills_store: Path) -> RepoConfig:
+def create_default_config(repo_path: Path, skills_store: Path) -> SkillSyncConfig:
     """Create default repository configuration.
 
     Args:
@@ -108,12 +100,10 @@ def create_default_config(repo_path: Path, skills_store: Path) -> RepoConfig:
         skills_store: Path to the skills storage directory.
 
     Returns:
-        Default RepoConfig instance.
+        Default SkillSyncConfig instance.
     """
-    return RepoConfig(
-        name="my-skills",
+    return SkillSyncConfig(
         path=repo_path,
         skills_store=skills_store,
         default_link_mode="symlink",
-        fallback_to_copy=True,
     )

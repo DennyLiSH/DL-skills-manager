@@ -11,29 +11,20 @@ from dl_skills_manager.core.commands._shared import (
     atomic_write_toml,
     find_skill_dir,
     format_version_date,
-    resolve_repo_path,
 )
+from dl_skills_manager.core.config import load_config
 from dl_skills_manager.core.manifest import read_skill_yaml
 
 
 @click.command()
 @click.argument("name")
-@click.option(
-    "--repo",
-    type=click.Path(),
-    default=None,
-    help="Path to skills repository (default: ~/.skills-repo)",
-)
-def bump(name: str, repo: str | None) -> None:
+def bump(name: str) -> None:
     """Create a new development version of a skill.
 
     Creates v{YYYY.MM.DD}-dev/ directory and updates skill.yaml.
     """
-    # Determine repo path
-    repo_path = resolve_repo_path(repo)
-
     # Find skill directory
-    skill_dir = find_skill_dir(repo_path, name)
+    skill_dir = find_skill_dir(name)
 
     # Create new dev version with today's date
     today = date.today()
@@ -48,7 +39,8 @@ def bump(name: str, repo: str | None) -> None:
 
     # Create SKILL.md from template if exists
     skill_md = version_dir / "SKILL.md"
-    template_path = repo_path / "templates" / "SKILL.md.tmpl"
+    config = load_config()
+    template_path = config.path / "templates" / "SKILL.md.tmpl"
     if template_path.exists():
         skill_md.write_text(template_path.read_text(encoding="utf-8"), encoding="utf-8")
     else:

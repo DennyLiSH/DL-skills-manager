@@ -10,32 +10,22 @@ from dl_skills_manager.core.commands._shared import (
     find_skill_dir,
     find_version_dir,
     update_skill_copy,
-    resolve_repo_path,
 )
 
 
 @click.command()
 @click.argument("name")
 @click.argument("project", default=".")
-@click.option(
-    "--repo",
-    type=click.Path(),
-    default=None,
-    help="Path to skills repository (default: ~/.skills-repo)",
-)
-def update(name: str, project: str, repo: str | None) -> None:
+def update(name: str, project: str) -> None:
     """Update a skill to the latest stable version.
 
     Re-resolves the latest version from the repository and updates the symlink.
     """
-    # Determine repo path
-    repo_path = resolve_repo_path(repo)
-
     # Project path
     project_path = Path(project).resolve()
 
     # Find skill and version directories (update always uses stable/latest)
-    skill_dir = find_skill_dir(repo_path, name)
+    skill_dir = find_skill_dir(name)
     version_dir = find_version_dir(skill_dir, version=None)
 
     # Check current installed version via symlink resolution

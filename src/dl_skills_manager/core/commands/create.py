@@ -9,9 +9,9 @@ import tomli_w
 
 from dl_skills_manager.core.commands._shared import (
     format_version_date,
-    resolve_repo_path,
     validate_skill_name,
 )
+from dl_skills_manager.core.config import load_config
 from dl_skills_manager.core.exceptions import (
     RepoNotInitializedError,
     SkillAlreadyExistsError,
@@ -26,13 +26,7 @@ from dl_skills_manager.core.exceptions import (
     default="",
     help="Skill description",
 )
-@click.option(
-    "--repo",
-    type=click.Path(),
-    default=None,
-    help="Path to skills repository (default: ~/.skills-repo)",
-)
-def create(name: str, description: str, repo: str | None) -> None:
+def create(name: str, description: str) -> None:
     """Create a new skill with initial version.
 
     Creates the skill directory structure:
@@ -43,7 +37,6 @@ def create(name: str, description: str, repo: str | None) -> None:
     Args:
         name: Name of the skill to create.
         description: Description of the skill.
-        repo: Path to skills repository (default: ~/.skills-repo).
     """
     # Validate skill name
     if not name or not name.strip():
@@ -54,7 +47,8 @@ def create(name: str, description: str, repo: str | None) -> None:
         raise ValidationError(str(e)) from e
 
     # Determine repo path
-    repo_path = resolve_repo_path(repo)
+    config = load_config()
+    repo_path = config.path
 
     skills_dir = repo_path / "skills"
     if not skills_dir.exists():
