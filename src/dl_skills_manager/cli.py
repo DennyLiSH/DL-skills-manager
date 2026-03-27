@@ -18,6 +18,7 @@ from dl_skills_manager.core.commands.create import create
 from dl_skills_manager.core.commands.init import init
 from dl_skills_manager.core.commands.install import install
 from dl_skills_manager.core.commands.list import list_skills_cmd
+from dl_skills_manager.core.commands.mtp import mtp
 from dl_skills_manager.core.commands.remove import remove
 # from dl_skills_manager.core.commands.status import status  # TBD
 from dl_skills_manager.core.commands.update import update
@@ -71,6 +72,7 @@ main.add_command(_handle_app_errors(init))
 main.add_command(_handle_app_errors(list_skills_cmd), name="list")
 # main.add_command(_handle_app_errors(create))  # TBD
 main.add_command(_handle_app_errors(install))
+main.add_command(_handle_app_errors(mtp))
 main.add_command(_handle_app_errors(remove))
 main.add_command(_handle_app_errors(update))
 # main.add_command(_handle_app_errors(bump))  # TBD

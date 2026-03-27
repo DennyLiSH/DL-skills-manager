@@ -36,6 +36,7 @@ __all__ = [
     "find_skill_dir",
     "find_version_dir",
     "format_version_date",
+    "get_latest_file_timestamp",
     "install_skill_copy",
     "update_skill_copy",
     "validate_skill_name",
@@ -56,6 +57,27 @@ def format_version_date(d: date, *, dev: bool = False) -> str:
     if dev:
         version += "-dev"
     return version
+
+
+def get_latest_file_timestamp(skill_dir: Path) -> str:
+    """Get timestamp from the most recently modified file in the directory.
+
+    Args:
+        skill_dir: Directory to scan.
+
+    Returns:
+        Timestamp string in format 'YYYYMMDDHHMMSS'.
+    """
+    latest_mtime = 0.0
+    for file_path in skill_dir.rglob("*"):
+        if file_path.is_file():
+            mtime = file_path.stat().st_mtime
+            if mtime > latest_mtime:
+                latest_mtime = mtime
+    from datetime import datetime
+
+    dt = datetime.fromtimestamp(latest_mtime)
+    return dt.strftime("%Y%m%d%H%M%S")
 
 
 def _parse_version(v: str) -> tuple[int, int]:
