@@ -55,9 +55,10 @@ class TestInitCommand:
         assert "skills_store" in content
 
     def test_init_already_exists(self, cli_runner: CliRunner, tmp_path: Path) -> None:
-        """Test init fails when config dir already exists."""
+        """Test init fails when config.toml already exists."""
         mock_config_path = tmp_path / ".skill-sync"
         mock_config_path.mkdir(parents=True, exist_ok=True)
+        (mock_config_path / "config.toml").write_text("[basic]\n")
 
         with patch(
             "dl_skills_manager.core.commands.init.get_default_repo_path",
@@ -66,7 +67,7 @@ class TestInitCommand:
             result = cli_runner.invoke(main, ["init"])
 
         assert result.exit_code == 1
-        assert "already exists" in result.output
+        assert "already initialized" in result.output
 
     def test_init_default_skills_path(self, cli_runner: CliRunner) -> None:
         """Test init with --help shows default path option."""

@@ -12,22 +12,21 @@ import tempfile
 from collections.abc import Mapping
 from contextlib import suppress
 from dataclasses import is_dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import cast, overload
 
 import tomli_w
 from packaging.version import InvalidVersion, Version
 
-from dl_skills_manager.core.config import get_default_repo_path, load_config
+from dl_skills_manager.core.config import load_config
 from dl_skills_manager.core.exceptions import (
-    ConfigError,
     LinkError,
     SkillNotFoundError,
     VersionNotFoundError,
     WriteError,
 )
-from dl_skills_manager.core.linker import copy_skill_dir, create_link, remove_link
+from dl_skills_manager.core.linker import copy_skill_dir
 
 logger = logging.getLogger(__name__)
 
@@ -74,9 +73,8 @@ def get_latest_file_timestamp(skill_dir: Path) -> str:
             mtime = file_path.stat().st_mtime
             if mtime > latest_mtime:
                 latest_mtime = mtime
-    from datetime import datetime
 
-    dt = datetime.fromtimestamp(latest_mtime)
+    dt = datetime.fromtimestamp(latest_mtime, tz=UTC)
     return dt.strftime("%Y%m%d%H%M%S")
 
 

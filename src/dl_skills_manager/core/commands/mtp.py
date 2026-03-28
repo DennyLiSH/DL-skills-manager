@@ -71,13 +71,9 @@ def mtp(name: str) -> None:
 
     dev_dir = skills_store / ".dev" / name
     if not dev_dir.exists() or not dev_dir.is_dir():
-        raise SkillNotFoundError(
-            f"Skill '{name}' not found in .dev/ directory"
-        )
+        raise SkillNotFoundError(f"Skill '{name}' not found in .dev/ directory")
     if not (dev_dir / "SKILL.md").exists():
-        raise SkillNotFoundError(
-            f"Skill '{name}' in .dev/ has no SKILL.md"
-        )
+        raise SkillNotFoundError(f"Skill '{name}' in .dev/ has no SKILL.md")
 
     bk_dir = skills_store / ".bk"
     bk_dir.mkdir(parents=True, exist_ok=True)

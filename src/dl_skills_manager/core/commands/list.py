@@ -2,8 +2,6 @@
 
 __all__ = ["list_skills", "list_skills_cmd"]
 
-from pathlib import Path
-
 import click
 
 from dl_skills_manager.core.config import load_config
@@ -32,7 +30,6 @@ def list_skills() -> tuple[list[SkillInfo], list[str]]:
         for bk_item in sorted(bk_dir.iterdir()):
             if not bk_item.is_dir():
                 continue
-            # Format: {skill-name}@{version}
             if "@" in bk_item.name:
                 skill_name, version = bk_item.name.split("@", 1)
                 if skill_name not in history_map:
@@ -81,7 +78,9 @@ def list_skills_cmd() -> None:
 
     if not skills:
         click.echo(f"No skills found in {skills_path}.")
-        click.echo("Please copy skill folders to this path, then run 'skill-sync list' again.")
+        click.echo(
+            "Please copy skill folders to this path, then run 'skill-sync list' again."
+        )
         return
 
     click.echo(f"Skills in {skills_path}:")

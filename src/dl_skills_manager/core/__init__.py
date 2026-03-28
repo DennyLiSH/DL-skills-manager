@@ -6,10 +6,8 @@ from dl_skills_manager.core.config import (
     load_config,
 )
 from dl_skills_manager.core.linker import create_link, is_link_valid, remove_link
-from dl_skills_manager.core.types import InstalledSkill
 
 __all__ = [
-    "InstalledSkill",
     "SkillSyncConfig",
     "create_link",
     "get_default_repo_path",

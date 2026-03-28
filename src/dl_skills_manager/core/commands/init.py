@@ -8,7 +8,7 @@ import click
 import tomli_w
 
 from dl_skills_manager.core.config import get_default_repo_path
-from dl_skills_manager.core.exceptions import RepoAlreadyExistsError
+from dl_skills_manager.core.exceptions import ConfigError, RepoAlreadyExistsError
 
 
 @click.command()
@@ -32,6 +32,11 @@ def init(skills_path: str | None, link_mode: str) -> None:
     # Always use ~/.skill-sync/ as config directory
     config_path = get_default_repo_path()
 
+    # Check if already initialized
+    config_file = config_path / "config.toml"
+    if config_file.exists():
+        raise RepoAlreadyExistsError(f"Repository already initialized at {config_path}")
+
     # Determine skills storage path
     if skills_path is None:
         # Default: create ~/.skill-sync/skills/ subdirectory
@@ -40,33 +45,16 @@ def init(skills_path: str | None, link_mode: str) -> None:
         # Custom path: use directly as skills store root (no skills/ subdirectory)
         skills_storage_path = Path(skills_path).expanduser().resolve()
 
-    # Create config directory
+    # Create directories
     try:
         config_path.mkdir(parents=True, exist_ok=True)
-    except OSError as e:
-        raise RepoAlreadyExistsError(
-            f"Failed to create config directory: {e}"
-        ) from e
-
-    # Create skills storage directory (if it doesn't exist)
-    try:
         skills_storage_path.mkdir(parents=True, exist_ok=True)
-    except OSError as e:
-        raise RepoAlreadyExistsError(
-            f"Failed to create skills directory: {e}"
-        ) from e
-
-    # Create .bk backup directory
-    bk_path = skills_storage_path / ".bk"
-    try:
+        bk_path = skills_storage_path / ".bk"
         bk_path.mkdir(parents=True, exist_ok=True)
     except OSError as e:
-        raise RepoAlreadyExistsError(
-            f"Failed to create .bk directory: {e}"
-        ) from e
+        raise ConfigError(f"Failed to create directory: {e}") from e
 
     # Create config.toml with [basic] section
-    config_file = config_path / "config.toml"
     config_data = {
         "basic": {
             "path": str(config_path),

@@ -8,6 +8,7 @@ import click
 
 from dl_skills_manager.core.commands._shared import (
     install_skill_copy,
+    validate_skill_name,
 )
 from dl_skills_manager.core.config import load_config
 
@@ -32,6 +33,8 @@ def install(name: str, project: str) -> None:
         name_parts = name.rsplit("@", 1)
         name = name_parts[0]
         version = name_parts[1] if len(name_parts) > 1 else None
+
+    validate_skill_name(name)
 
     # Load config and determine paths
     config = load_config()
