@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 
 __all__ = [
-    "InstalledSkill",
     "SkillInfo",
 ]
 
@@ -13,15 +12,4 @@ class SkillInfo:
     """Skill information for list output."""
 
     name: str
-    description: str
-    version: str
     history: tuple[str, ...]
-
-
-@dataclass(slots=True, frozen=True)
-class InstalledSkill:
-    """An installed skill entry."""
-
-    name: str
-    source: str
-    version: str

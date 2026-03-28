@@ -8,22 +8,20 @@ from dl_skills_manager.core.config import load_config
 from dl_skills_manager.core.types import SkillInfo
 
 
-def list_skills() -> tuple[list[SkillInfo], list[str]]:
+def list_skills() -> list[SkillInfo]:
     """List all skills in the repository.
 
     Returns:
-        Tuple of (skills list, warnings list).
+        List of skill information objects.
     """
     config = load_config()
     skills_dir = config.skills_store
     if not skills_dir.exists():
-        return [], []
-
-    skills: list[SkillInfo] = []
-    warnings: list[str] = []
+        return []
 
     bk_dir = skills_dir / ".bk"
     history_map: dict[str, list[str]] = {}
+    skills: list[SkillInfo] = []
 
     # Scan .bk for history versions first
     if bk_dir.exists():
@@ -56,13 +54,11 @@ def list_skills() -> tuple[list[SkillInfo], list[str]]:
         skills.append(
             SkillInfo(
                 name=skill_name,
-                description="",
-                version="current",
                 history=tuple(history),
             )
         )
 
-    return skills, warnings
+    return skills
 
 
 @click.command()
@@ -71,10 +67,7 @@ def list_skills_cmd() -> None:
     config = load_config()
     skills_path = config.skills_store
 
-    skills, warnings = list_skills()
-
-    for warning in warnings:
-        click.echo(f"Warning: {warning}", err=True)
+    skills = list_skills()
 
     if not skills:
         click.echo(f"No skills found in {skills_path}.")
@@ -92,7 +85,5 @@ def list_skills_cmd() -> None:
         else:
             version_label = "(current)"
         click.echo(f"  {skill.name} {version_label}")
-        if skill.description:
-            click.echo(f"    {skill.description}")
         if skill.history:
             click.echo(f"    history: {', '.join(skill.history)}")

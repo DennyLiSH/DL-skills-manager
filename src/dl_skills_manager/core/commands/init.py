@@ -8,7 +8,11 @@ import click
 import tomli_w
 
 from dl_skills_manager.core.config import get_default_repo_path
-from dl_skills_manager.core.exceptions import ConfigError, RepoAlreadyExistsError
+from dl_skills_manager.core.exceptions import (
+    ConfigError,
+    RepoAlreadyExistsError,
+    WriteError,
+)
 
 
 @click.command()
@@ -65,8 +69,11 @@ def init(skills_path: str | None, link_mode: str) -> None:
         },
     }
 
-    with config_file.open("wb") as f:
-        tomli_w.dump(config_data, f)
+    try:
+        with config_file.open("wb") as f:
+            tomli_w.dump(config_data, f)
+    except OSError as e:
+        raise WriteError(f"Failed to write config: {config_file}") from e
 
     click.echo(f"Initialized config at: {config_path}")
     click.echo(f"Skills storage at: {skills_storage_path}")

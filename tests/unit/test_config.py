@@ -116,3 +116,26 @@ skills_store = "/custom/skills"
         # path defaults to repo_path
         assert config.path == repo_path
         assert config.skills_store == Path("/custom/skills")
+
+    def test_raises_error_for_invalid_link_mode(self, tmp_path: Path) -> None:
+        """Test ConfigError when default_link_mode is invalid."""
+        repo_path = tmp_path / ".skill-sync"
+        repo_path.mkdir()
+        config_path = repo_path / "config.toml"
+        config_path.write_text(
+            """[basic]
+skills_store = "/tmp/skills"
+
+[settings]
+default_link_mode = "invalid"
+"""
+        )
+
+        with (
+            patch(
+                "dl_skills_manager.core.config.get_default_repo_path",
+                return_value=repo_path,
+            ),
+            pytest.raises(ConfigError, match="default_link_mode"),
+        ):
+            load_config()

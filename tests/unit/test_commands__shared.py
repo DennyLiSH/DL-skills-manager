@@ -9,19 +9,12 @@ from dl_skills_manager.core.commands._shared import (
     find_skill_dir,
     find_version_dir,
 )
-from dl_skills_manager.core.config import SkillSyncConfig
 from dl_skills_manager.core.exceptions import (
     SkillNotFoundError,
+    ValidationError,
     VersionNotFoundError,
 )
-
-
-def _mock_config(repo_path: Path) -> SkillSyncConfig:
-    return SkillSyncConfig(
-        path=repo_path,
-        skills_store=repo_path / "skills",
-        default_link_mode="copy",
-    )
+from test_helpers import mock_config
 
 
 class TestFindSkillDir:
@@ -35,7 +28,7 @@ class TestFindSkillDir:
 
         with patch(
             "dl_skills_manager.core.commands._shared.load_config",
-            return_value=_mock_config(skills_repo_dir),
+            return_value=mock_config(skills_repo_dir),
         ):
             result = find_skill_dir("test-skill")
         assert result == skill_dir
@@ -45,7 +38,7 @@ class TestFindSkillDir:
         with (
             patch(
                 "dl_skills_manager.core.commands._shared.load_config",
-                return_value=_mock_config(skills_repo_dir),
+                return_value=mock_config(skills_repo_dir),
             ),
             pytest.raises(SkillNotFoundError, match="not found"),
         ):
@@ -64,7 +57,7 @@ class TestFindSkillDir:
         self, skills_repo_dir: Path, skill_name: str, expected_match: str
     ) -> None:
         """Test path traversal attempts are rejected."""
-        with pytest.raises(ValueError, match=expected_match):
+        with pytest.raises(ValidationError, match=expected_match):
             find_skill_dir(skill_name)
 
 

@@ -8,18 +8,10 @@ import pytest
 import tomli_w
 
 from dl_skills_manager.cli import main
-from dl_skills_manager.core.config import SkillSyncConfig
+from test_helpers import mock_config
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
-
-
-def _mock_config(repo_path: Path) -> SkillSyncConfig:
-    return SkillSyncConfig(
-        path=repo_path,
-        skills_store=repo_path / "skills",
-        default_link_mode="copy",
-    )
 
 
 @pytest.fixture
@@ -68,11 +60,11 @@ class TestVersionsCommand:
         with (
             patch(
                 "dl_skills_manager.core.commands.versions.load_config",
-                return_value=_mock_config(repo_with_versions),
+                return_value=mock_config(repo_with_versions),
             ),
             patch(
                 "dl_skills_manager.core.commands._shared.load_config",
-                return_value=_mock_config(repo_with_versions),
+                return_value=mock_config(repo_with_versions),
             ),
         ):
             result = cli_runner.invoke(main, ["versions", "test-skill"])
@@ -90,11 +82,11 @@ class TestVersionsCommand:
         with (
             patch(
                 "dl_skills_manager.core.commands.versions.load_config",
-                return_value=_mock_config(repo_with_versions),
+                return_value=mock_config(repo_with_versions),
             ),
             patch(
                 "dl_skills_manager.core.commands._shared.load_config",
-                return_value=_mock_config(repo_with_versions),
+                return_value=mock_config(repo_with_versions),
             ),
         ):
             result = cli_runner.invoke(main, ["versions", "test-skill"])
@@ -108,11 +100,11 @@ class TestVersionsCommand:
         with (
             patch(
                 "dl_skills_manager.core.commands.versions.load_config",
-                return_value=_mock_config(repo_with_versions),
+                return_value=mock_config(repo_with_versions),
             ),
             patch(
                 "dl_skills_manager.core.commands._shared.load_config",
-                return_value=_mock_config(repo_with_versions),
+                return_value=mock_config(repo_with_versions),
             ),
         ):
             result = cli_runner.invoke(main, ["versions", "nonexistent"])

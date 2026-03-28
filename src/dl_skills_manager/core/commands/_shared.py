@@ -12,17 +12,17 @@ import tempfile
 from collections.abc import Mapping
 from contextlib import suppress
 from dataclasses import is_dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast, overload
 
 import tomli_w
-from packaging.version import InvalidVersion, Version
 
 from dl_skills_manager.core.config import SkillSyncConfig, load_config
 from dl_skills_manager.core.exceptions import (
     LinkError,
     SkillNotFoundError,
+    ValidationError,
     VersionNotFoundError,
     WriteError,
 )
@@ -34,28 +34,11 @@ __all__ = [
     "atomic_write_toml",
     "find_skill_dir",
     "find_version_dir",
-    "format_version_date",
     "get_latest_file_timestamp",
     "install_skill_copy",
     "update_skill_copy",
     "validate_skill_name",
 ]
-
-
-def format_version_date(d: date, *, dev: bool = False) -> str:
-    """Format a date as a version string.
-
-    Args:
-        d: Date to format.
-        dev: If True, append '-dev' suffix.
-
-    Returns:
-        Version string in format 'vYYYY.MM.DD' or 'vYYYY.MM.DD-dev'.
-    """
-    version = f"v{d.strftime('%Y.%m.%d')}"
-    if dev:
-        version += "-dev"
-    return version
 
 
 def get_latest_file_timestamp(skill_dir: Path) -> str:
@@ -78,32 +61,6 @@ def get_latest_file_timestamp(skill_dir: Path) -> str:
     return dt.strftime("%Y%m%d%H%M%S")
 
 
-def _parse_version(v: str) -> tuple[int, int]:
-    """Parse version string for proper sorting.
-
-    Args:
-        v: Version string (e.g., "v2026.03.23", "v2026.03.23-dev").
-
-    Returns:
-        Tuple of (priority, dev_flag) for sorting.
-        - priority: Higher = newer version (0 for invalid)
-        - dev_flag: 0 for stable, 1 for dev (stable versions sort first)
-        Invalid versions get priority 0 to sort to the bottom.
-    """
-    is_dev = v.endswith("-dev")
-    clean = v.replace("-dev", "").lstrip("v")
-    try:
-        version = Version(clean)
-        # Use base_version components to avoid pre-release suffixes
-        parts = version.base_version.split(".")
-        # Pad parts to at least 3 for consistent sorting
-        padded = parts + ["0"] * (3 - len(parts))
-        priority = int(padded[0]) * 10000 + int(padded[1]) * 100 + int(padded[2])
-        return (priority, 1 if is_dev else 0)
-    except InvalidVersion:
-        return (0, 0)
-
-
 def validate_skill_name(name: str) -> None:
     """Validate skill name format.
 
@@ -111,15 +68,17 @@ def validate_skill_name(name: str) -> None:
         name: Skill name to validate.
 
     Raises:
-        ValueError: If skill name contains invalid characters or patterns.
+        ValidationError: If skill name contains invalid characters or patterns.
     """
     # Check path traversal patterns first for proper error messages
     if ".." in name or name.startswith(("~", "/", "\\", "$")):
-        raise ValueError(f"Invalid skill name: {name}")
+        raise ValidationError(f"Invalid skill name: {name}")
     if "/" in name or "\\" in name:
-        raise ValueError(f"Invalid skill name: {name}")
+        raise ValidationError(f"Invalid skill name: {name}")
     if not all(c.isalnum() or c in "-_" for c in name):
-        raise ValueError("Skill name must be alphanumeric, hyphens, or underscores")
+        raise ValidationError(
+            "Skill name must be alphanumeric, hyphens, or underscores"
+        )
 
 
 def find_skill_dir(name: str, *, config: SkillSyncConfig | None = None) -> Path:
@@ -134,7 +93,7 @@ def find_skill_dir(name: str, *, config: SkillSyncConfig | None = None) -> Path:
 
     Raises:
         SkillNotFoundError: If skill does not exist in repository.
-        ValueError: If skill name contains path traversal attempts.
+        ValidationError: If skill name contains path traversal attempts.
     """
     # Validate skill name to prevent path traversal and ensure format consistency
     validate_skill_name(name)
@@ -149,9 +108,9 @@ def find_skill_dir(name: str, *, config: SkillSyncConfig | None = None) -> Path:
     try:
         resolved_skill_dir = skill_dir.resolve()
     except OSError as e:
-        raise ValueError(f"Could not resolve skill path: {skill_dir}") from e
+        raise ValidationError(f"Could not resolve skill path: {skill_dir}") from e
     if not resolved_skill_dir.is_relative_to(skills_base):
-        raise ValueError(f"Skill path escaped repository: {name}")
+        raise ValidationError(f"Skill path escaped repository: {name}")
     if not skill_dir.exists():
         raise SkillNotFoundError(f"Skill '{name}' not found in repository")
     return skill_dir
@@ -185,26 +144,10 @@ def find_version_dir(skill_dir: Path, version: str | None = None) -> Path:
             f"Version '{version}' not found for skill '{skill_dir.name}'"
         )
 
-    version_path: Path | None = _find_stable_or_latest(skill_dir)
-
-    if version_path is None or not version_path.exists():
+    if not skill_dir.exists():
         raise VersionNotFoundError(f"No version found for skill '{skill_dir.name}'")
 
-    return version_path
-
-
-def _find_stable_or_latest(skill_dir: Path) -> Path | None:
-    """Return the skill directory as stable version.
-
-    Args:
-        skill_dir: Path to the skill directory.
-
-    Returns:
-        Path to the skill directory itself, or None if not found.
-    """
-    if skill_dir.exists() and skill_dir.is_dir():
-        return skill_dir
-    return None
+    return skill_dir
 
 
 # Using overloads to properly handle both Mapping and dataclass inputs

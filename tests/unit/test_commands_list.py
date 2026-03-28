@@ -9,18 +9,10 @@ import tomli_w
 
 from dl_skills_manager.cli import main
 from dl_skills_manager.core.commands.list import list_skills
-from dl_skills_manager.core.config import SkillSyncConfig
+from test_helpers import mock_config
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
-
-
-def _mock_config(repo_path: Path) -> SkillSyncConfig:
-    return SkillSyncConfig(
-        path=repo_path,
-        skills_store=repo_path / "skills",
-        default_link_mode="copy",
-    )
 
 
 @pytest.fixture
@@ -79,29 +71,25 @@ class TestListSkills:
                 f,
             )
 
-        mock_cfg = _mock_config(config_dir)
+        mock_cfg = mock_config(config_dir)
         with patch(
             "dl_skills_manager.core.commands.list.load_config",
             return_value=mock_cfg,
         ):
-            skills, warnings = list_skills()
+            skills = list_skills()
         assert skills == []
-        assert warnings == []
 
     def test_list_skills_with_skills(self, initialized_repo: Path) -> None:
         """Test list_skills returns skills info."""
-        mock_cfg = _mock_config(initialized_repo)
+        mock_cfg = mock_config(initialized_repo)
         with patch(
             "dl_skills_manager.core.commands.list.load_config",
             return_value=mock_cfg,
         ):
-            skills, warnings = list_skills()
+            skills = list_skills()
         assert len(skills) == 1
         assert skills[0].name == "test-skill"
-        assert skills[0].description == ""
-        assert skills[0].version == "current"
         assert skills[0].history == ("v2026.03.22",)
-        assert warnings == []
 
 
 class TestListCommand:
@@ -125,7 +113,7 @@ class TestListCommand:
         self, cli_runner: CliRunner, initialized_repo: Path
     ) -> None:
         """Test list shows skills."""
-        mock_cfg = _mock_config(initialized_repo)
+        mock_cfg = mock_config(initialized_repo)
         with patch(
             "dl_skills_manager.core.commands.list.load_config",
             return_value=mock_cfg,

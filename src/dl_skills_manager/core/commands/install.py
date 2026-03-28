@@ -30,9 +30,7 @@ def install(name: str, project: str) -> None:
     # Parse name@version syntax
     version: str | None = None
     if "@" in name:
-        name_parts = name.rsplit("@", 1)
-        name = name_parts[0]
-        version = name_parts[1] if len(name_parts) > 1 else None
+        name, version = name.rsplit("@", 1)
 
     validate_skill_name(name)
 

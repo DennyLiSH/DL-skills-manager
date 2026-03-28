@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 
+from dl_skills_manager.core.commands._shared import validate_skill_name
 from dl_skills_manager.core.linker import remove_link
 
 
@@ -17,6 +18,8 @@ def remove(name: str, project: str) -> None:
 
     Removes the symlink/copy.
     """
+    validate_skill_name(name)
+
     project_path = Path(project).resolve()
 
     # Remove symlink/copy

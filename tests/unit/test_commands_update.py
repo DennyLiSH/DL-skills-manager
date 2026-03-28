@@ -8,18 +8,10 @@ import pytest
 import tomli_w
 
 from dl_skills_manager.cli import main
-from dl_skills_manager.core.config import SkillSyncConfig
+from test_helpers import mock_config
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
-
-
-def _mock_config(repo_path: Path) -> SkillSyncConfig:
-    return SkillSyncConfig(
-        path=repo_path,
-        skills_store=repo_path / "skills",
-        default_link_mode="copy",
-    )
 
 
 @pytest.fixture
@@ -69,7 +61,7 @@ class TestUpdateCommand:
         old_skill.mkdir(parents=True)
         (old_skill / "SKILL.md").write_text("# Old Version\n")
 
-        mock_cfg = _mock_config(repo_with_skill)
+        mock_cfg = mock_config(repo_with_skill)
         with (
             patch(
                 "dl_skills_manager.core.commands.update.load_config",
@@ -95,7 +87,7 @@ class TestUpdateCommand:
         project_dir: Path,
     ) -> None:
         """Test updating a skill that doesn't exist."""
-        mock_cfg = _mock_config(repo_with_skill)
+        mock_cfg = mock_config(repo_with_skill)
         with (
             patch(
                 "dl_skills_manager.core.commands.update.load_config",

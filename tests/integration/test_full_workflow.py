@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+import pytest
+
 from dl_skills_manager.cli import main
 
 if TYPE_CHECKING:
@@ -34,5 +36,4 @@ class TestWorkflow:
         self, cli_runner: CliRunner, tmp_path: Path
     ) -> None:
         """Test create and list workflow - skipped since create is TBD."""
-        # create command is TBD, skipping this integration test
-        pass
+        pytest.skip("create command is TBD")

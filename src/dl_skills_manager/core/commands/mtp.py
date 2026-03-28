@@ -13,7 +13,7 @@ from dl_skills_manager.core.commands._shared import (
     validate_skill_name,
 )
 from dl_skills_manager.core.config import load_config
-from dl_skills_manager.core.exceptions import SkillNotFoundError
+from dl_skills_manager.core.exceptions import SkillNotFoundError, WriteError
 
 
 def _resolve_version(dev_dir: Path, name: str, bk_dir: Path) -> str:
@@ -81,13 +81,17 @@ def mtp(name: str) -> None:
     version = _resolve_version(dev_dir, name, bk_dir)
 
     target = skills_store / name
-    if target.exists():
-        shutil.rmtree(target)
 
-    shutil.copytree(dev_dir, target, symlinks=False)
+    try:
+        if target.exists():
+            shutil.rmtree(target)
 
-    bk_target = bk_dir / f"{name}@{version}"
-    shutil.copytree(dev_dir, bk_target, symlinks=False)
+        shutil.copytree(dev_dir, target, symlinks=False)
+
+        bk_target = bk_dir / f"{name}@{version}"
+        shutil.copytree(dev_dir, bk_target, symlinks=False)
+    except OSError as e:
+        raise WriteError(f"Failed to move '{name}' to production: {e}") from e
 
     click.echo(f"Moved '{name}' to production (version: {version})")
     click.echo(f"  -> {target}")

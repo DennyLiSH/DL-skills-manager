@@ -71,5 +71,15 @@ class TestRemoveCommand:
         )
 
         # Should still exit 0 but warn
-        output_lower = result.output.lower()
-        assert "not installed" in output_lower or "removed" in output_lower
+        assert "not installed" in result.output.lower()
+
+    def test_remove_invalid_name(
+        self, cli_runner: CliRunner, project_with_skill: Path
+    ) -> None:
+        """Test removing a skill with path traversal in name."""
+        result = cli_runner.invoke(
+            main,
+            ["remove", "../evil", str(project_with_skill)],
+        )
+
+        assert result.exit_code != 0

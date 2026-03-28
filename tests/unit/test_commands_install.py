@@ -2,14 +2,24 @@
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 import tomli_w
 
 from dl_skills_manager.cli import main
+from dl_skills_manager.core.config import SkillSyncConfig
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
+
+
+def _make_mock_config(repo_path: Path) -> SkillSyncConfig:
+    return SkillSyncConfig(
+        path=repo_path,
+        skills_store=repo_path / "skills",
+        default_link_mode="symlink",
+    )
 
 
 @pytest.fixture
@@ -44,19 +54,6 @@ def repo_with_skill(tmp_path: Path) -> Path:
     skill_dir.mkdir()
     (skill_dir / "SKILL.md").write_text("# Test Skill\n")
 
-    # Create skill.yaml
-    skill_yaml = skill_dir / "skill.yaml"
-    with skill_yaml.open("wb") as f:
-        tomli_w.dump(
-            {
-                "name": "test-skill",
-                "description": "A test skill",
-                "version": "v2026.03.23-dev",
-                "stable_version": "v2026.03.23",
-            },
-            f,
-        )
-
     return repo_path
 
 
@@ -75,15 +72,7 @@ class TestInstallCommand:
         self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
     ) -> None:
         """Test installing a skill to a project."""
-        from unittest.mock import patch
-
-        from dl_skills_manager.core.config import SkillSyncConfig
-
-        mock_config = SkillSyncConfig(
-            path=repo_with_skill,
-            skills_store=repo_with_skill / "skills",
-            default_link_mode="symlink",
-        )
+        mock_config = _make_mock_config(repo_with_skill)
 
         with patch(
             "dl_skills_manager.core.commands.install.load_config",
@@ -101,7 +90,7 @@ class TestInstallCommand:
         assert result.exit_code == 0, result.output
         assert "Installed test-skill@latest" in result.output
 
-        # Check symlink was created
+        # Check skill was created
         skill_link = project_dir / ".claude" / "skills" / "test-skill"
         assert skill_link.exists()
 
@@ -109,15 +98,7 @@ class TestInstallCommand:
         self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
     ) -> None:
         """Test installing a skill that doesn't exist."""
-        from unittest.mock import patch
-
-        from dl_skills_manager.core.config import SkillSyncConfig
-
-        mock_config = SkillSyncConfig(
-            path=repo_with_skill,
-            skills_store=repo_with_skill / "skills",
-            default_link_mode="symlink",
-        )
+        mock_config = _make_mock_config(repo_with_skill)
 
         with patch(
             "dl_skills_manager.core.commands.install.load_config",
@@ -145,15 +126,7 @@ class TestInstallCommand:
         bk_version_dir.mkdir()
         (bk_version_dir / "SKILL.md").write_text("# Old Version\n")
 
-        from unittest.mock import patch
-
-        from dl_skills_manager.core.config import SkillSyncConfig
-
-        mock_config = SkillSyncConfig(
-            path=repo_with_skill,
-            skills_store=repo_with_skill / "skills",
-            default_link_mode="symlink",
-        )
+        mock_config = _make_mock_config(repo_with_skill)
 
         with patch(
             "dl_skills_manager.core.commands.install.load_config",

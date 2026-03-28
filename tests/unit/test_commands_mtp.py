@@ -8,7 +8,7 @@ import pytest
 import tomli_w
 
 from dl_skills_manager.cli import main
-from dl_skills_manager.core.config import SkillSyncConfig
+from test_helpers import mock_config
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
@@ -45,14 +45,6 @@ def repo_with_dev_skill(tmp_path: Path) -> Path:
     return repo_path
 
 
-def _mock_config(repo_path: Path) -> SkillSyncConfig:
-    return SkillSyncConfig(
-        path=repo_path,
-        skills_store=repo_path / "skills",
-        default_link_mode="copy",
-    )
-
-
 class TestMtpCommand:
     """Tests for mtp command."""
 
@@ -62,7 +54,7 @@ class TestMtpCommand:
         """Test mtp copies .dev skill to skills_store root."""
         with patch(
             "dl_skills_manager.core.commands.mtp.load_config",
-            return_value=_mock_config(repo_with_dev_skill),
+            return_value=mock_config(repo_with_dev_skill),
         ):
             result = cli_runner.invoke(main, ["mtp", "my-skill"])
 
@@ -93,7 +85,7 @@ class TestMtpCommand:
 
         with patch(
             "dl_skills_manager.core.commands.mtp.load_config",
-            return_value=_mock_config(repo_with_dev_skill),
+            return_value=mock_config(repo_with_dev_skill),
         ):
             result = cli_runner.invoke(main, ["mtp", "my-skill"])
 
@@ -108,7 +100,7 @@ class TestMtpCommand:
         """Test .bk version follows vYYYY.MM.DD format."""
         with patch(
             "dl_skills_manager.core.commands.mtp.load_config",
-            return_value=_mock_config(repo_with_dev_skill),
+            return_value=mock_config(repo_with_dev_skill),
         ):
             result = cli_runner.invoke(main, ["mtp", "my-skill"])
 
@@ -137,7 +129,7 @@ class TestMtpCommand:
         # Create existing backup with same base version
         with patch(
             "dl_skills_manager.core.commands.mtp.load_config",
-            return_value=_mock_config(repo_with_dev_skill),
+            return_value=mock_config(repo_with_dev_skill),
         ):
             # First mtp
             result1 = cli_runner.invoke(main, ["mtp", "my-skill"])
@@ -167,7 +159,7 @@ class TestMtpCommand:
         """Test mtp fails when skill not in .dev/."""
         with patch(
             "dl_skills_manager.core.commands.mtp.load_config",
-            return_value=_mock_config(repo_with_dev_skill),
+            return_value=mock_config(repo_with_dev_skill),
         ):
             result = cli_runner.invoke(main, ["mtp", "nonexistent"])
 
@@ -180,7 +172,7 @@ class TestMtpCommand:
         """Test mtp fails with invalid skill name."""
         with patch(
             "dl_skills_manager.core.commands.mtp.load_config",
-            return_value=_mock_config(repo_with_dev_skill),
+            return_value=mock_config(repo_with_dev_skill),
         ):
             result = cli_runner.invoke(main, ["mtp", "../evil"])
 

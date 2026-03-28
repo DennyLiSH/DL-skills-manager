@@ -71,6 +71,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]  # allow assert in tests
 
+[tool.ruff.lint.isort]
+known-first-party = ["dl_skills_manager"]
+
 [tool.mypy]
 python_version = "3.14"
 strict = true
@@ -93,8 +96,15 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 minversion = "8.0"
-addopts = "-v --tb=short --cov=src"
+addopts = "-v --tb=short --cov=src --cov-branch"
 filterwarnings = [
     "error",
     "ignore::DeprecationWarning",
 ]
+
+[tool.coverage.run]
+source = ["src"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
