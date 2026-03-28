@@ -11,6 +11,7 @@ from dl_skills_manager.core.commands._shared import (
     find_version_dir,
     update_skill_copy,
 )
+from dl_skills_manager.core.config import load_config
 
 
 @click.command()
@@ -25,7 +26,8 @@ def update(name: str, project: str) -> None:
     project_path = Path(project).resolve()
 
     # Find skill and version directories (update always uses stable/latest)
-    skill_dir = find_skill_dir(name)
+    config = load_config()
+    skill_dir = find_skill_dir(name, config=config)
     version_dir = find_version_dir(skill_dir, version=None)
 
     # Check current installed version via symlink resolution

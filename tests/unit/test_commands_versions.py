@@ -1,68 +1,59 @@
 """Tests for versions command."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 import tomli_w
 
 from dl_skills_manager.cli import main
+from dl_skills_manager.core.config import SkillSyncConfig
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
 
 
+def _mock_config(repo_path: Path) -> SkillSyncConfig:
+    return SkillSyncConfig(
+        path=repo_path,
+        skills_store=repo_path / "skills",
+        default_link_mode="copy",
+    )
+
+
 @pytest.fixture
 def repo_with_versions(tmp_path: Path) -> Path:
-    """Create a repository with multiple versions."""
-    repo_path = tmp_path / ".skills-repo"
+    """Create a repository with multiple versions in .bk/."""
+    repo_path = tmp_path / ".skill-sync"
     repo_path.mkdir()
-    (repo_path / "skills").mkdir()
-    (repo_path / "templates").mkdir()
+    skills_dir = repo_path / "skills"
+    skills_dir.mkdir()
 
     # Create config.toml
     config_path = repo_path / "config.toml"
     with config_path.open("wb") as f:
         tomli_w.dump(
             {
-                "repo": {"name": "test", "path": str(repo_path)},
-                "settings": {"default_link_mode": "symlink", "fallback_to_copy": True},
+                "basic": {"path": str(repo_path), "skills_store": str(skills_dir)},
+                "settings": {"default_link_mode": "symlink"},
             },
             f,
         )
 
-    # Create skill with multiple versions
-    skill_dir = repo_path / "skills" / "test-skill"
+    # Create current skill
+    skill_dir = skills_dir / "test-skill"
     skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text("# Current\n")
 
-    # Version 1
-    v1 = skill_dir / "v2026.03.20"
-    v1.mkdir()
-    (v1 / "SKILL.md").write_text("# V1\n")
+    # Create history versions in .bk/
+    bk_dir = skills_dir / ".bk"
+    bk_dir.mkdir()
 
-    # Version 2 (stable)
-    v2 = skill_dir / "v2026.03.23"
-    v2.mkdir()
-    (v2 / "SKILL.md").write_text("# V2\n")
-
-    # Version 3 (dev, current)
-    v3 = skill_dir / "v2026.03.25-dev"
-    v3.mkdir()
-    (v3 / "SKILL.md").write_text("# V3 Dev\n")
-
-    skill_yaml = skill_dir / "skill.yaml"
-    with skill_yaml.open("wb") as f:
-        tomli_w.dump(
-            {
-                "name": "test-skill",
-                "description": "A test skill",
-                "version": "v2026.03.25-dev",
-                "stable_version": "v2026.03.23",
-            },
-            f,
-        )
+    for version in ["v2026.03.20", "v2026.03.23", "v2026.03.25-dev"]:
+        v_dir = bk_dir / f"test-skill@{version}"
+        v_dir.mkdir()
+        (v_dir / "SKILL.md").write_text(f"# {version}\n")
 
     return repo_path
 
@@ -73,37 +64,58 @@ class TestVersionsCommand:
     def test_versions_lists_all(
         self, cli_runner: CliRunner, repo_with_versions: Path
     ) -> None:
-        """Test listing all versions."""
-        result = cli_runner.invoke(
-            main,
-            ["versions", "test-skill", "--repo", str(repo_with_versions)],
-        )
+        """Test listing all versions from .bk/."""
+        with (
+            patch(
+                "dl_skills_manager.core.commands.versions.load_config",
+                return_value=_mock_config(repo_with_versions),
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.load_config",
+                return_value=_mock_config(repo_with_versions),
+            ),
+        ):
+            result = cli_runner.invoke(main, ["versions", "test-skill"])
 
         assert result.exit_code == 0, result.output
+        assert "current" in result.output
         assert "v2026.03.20" in result.output
         assert "v2026.03.23" in result.output
         assert "v2026.03.25-dev" in result.output
 
-    def test_versions_shows_markers(
+    def test_versions_shows_current_marker(
         self, cli_runner: CliRunner, repo_with_versions: Path
     ) -> None:
-        """Test versions shows stable and current markers."""
-        result = cli_runner.invoke(
-            main,
-            ["versions", "test-skill", "--repo", str(repo_with_versions)],
-        )
+        """Test versions shows current marker."""
+        with (
+            patch(
+                "dl_skills_manager.core.commands.versions.load_config",
+                return_value=_mock_config(repo_with_versions),
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.load_config",
+                return_value=_mock_config(repo_with_versions),
+            ),
+        ):
+            result = cli_runner.invoke(main, ["versions", "test-skill"])
 
-        assert "stable" in result.output
         assert "current" in result.output
 
     def test_versions_nonexistent_skill(
         self, cli_runner: CliRunner, repo_with_versions: Path
     ) -> None:
         """Test versions for nonexistent skill."""
-        result = cli_runner.invoke(
-            main,
-            ["versions", "nonexistent", "--repo", str(repo_with_versions)],
-        )
+        with (
+            patch(
+                "dl_skills_manager.core.commands.versions.load_config",
+                return_value=_mock_config(repo_with_versions),
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.load_config",
+                return_value=_mock_config(repo_with_versions),
+            ),
+        ):
+            result = cli_runner.invoke(main, ["versions", "nonexistent"])
 
         assert result.exit_code != 0
         assert "not found" in result.output.lower()

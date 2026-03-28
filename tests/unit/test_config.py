@@ -1,8 +1,7 @@
 """Tests for config module."""
 
-from __future__ import annotations
-
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -60,12 +59,20 @@ class TestLoadConfig:
 
     def test_raises_error_when_config_missing(self, tmp_path: Path) -> None:
         """Test ConfigError when config.toml doesn't exist."""
-        with pytest.raises(ConfigError, match="Config file not found"):
+        with (
+            patch(
+                "dl_skills_manager.core.config.get_default_repo_path",
+                return_value=tmp_path / ".skill-sync",
+            ),
+            pytest.raises(ConfigError, match="Config file not found"),
+        ):
             load_config()
 
     def test_loads_valid_config(self, tmp_path: Path) -> None:
         """Test loading a valid config.toml."""
-        config_path = tmp_path / "config.toml"
+        repo_path = tmp_path / ".skill-sync"
+        repo_path.mkdir()
+        config_path = repo_path / "config.toml"
         skills_store = tmp_path / "skills"
         skills_store.mkdir()
         config_path.write_text(
@@ -78,24 +85,34 @@ default_link_mode = "copy"
 """
         )
 
-        config = load_config()
+        with patch(
+            "dl_skills_manager.core.config.get_default_repo_path",
+            return_value=repo_path,
+        ):
+            config = load_config()
 
         assert config.path == Path.home() / ".skill-sync"
-        assert config.skills_store == Path("/tmp/skills")
+        assert config.skills_store == Path("/tmp/skills")  # noqa: S108
         assert config.default_link_mode == "copy"
 
     def test_uses_defaults_for_missing_fields(self, tmp_path: Path) -> None:
         """Test defaults are used when fields are missing."""
-        config_path = tmp_path / "config.toml"
+        repo_path = tmp_path / ".skill-sync"
+        repo_path.mkdir()
+        config_path = repo_path / "config.toml"
         config_path.write_text(
             """[basic]
 skills_store = "/custom/skills"
 """
         )
 
-        config = load_config()
+        with patch(
+            "dl_skills_manager.core.config.get_default_repo_path",
+            return_value=repo_path,
+        ):
+            config = load_config()
 
         assert config.default_link_mode == "symlink"
         # path defaults to repo_path
-        assert config.path == tmp_path
+        assert config.path == repo_path
         assert config.skills_store == Path("/custom/skills")

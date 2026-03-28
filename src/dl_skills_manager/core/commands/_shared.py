@@ -19,7 +19,7 @@ from typing import cast, overload
 import tomli_w
 from packaging.version import InvalidVersion, Version
 
-from dl_skills_manager.core.config import load_config
+from dl_skills_manager.core.config import SkillSyncConfig, load_config
 from dl_skills_manager.core.exceptions import (
     LinkError,
     SkillNotFoundError,
@@ -122,11 +122,12 @@ def validate_skill_name(name: str) -> None:
         raise ValueError("Skill name must be alphanumeric, hyphens, or underscores")
 
 
-def find_skill_dir(name: str) -> Path:
+def find_skill_dir(name: str, *, config: SkillSyncConfig | None = None) -> Path:
     """Find skill directory in repository.
 
     Args:
         name: Skill name.
+        config: Optional pre-loaded config to avoid repeated load_config() calls.
 
     Returns:
         Path to the skill directory.
@@ -139,7 +140,8 @@ def find_skill_dir(name: str) -> Path:
     validate_skill_name(name)
 
     # Load config to get skills_store
-    config = load_config()
+    if config is None:
+        config = load_config()
     skills_base = config.skills_store.resolve()
     skill_dir = skills_base / name
 

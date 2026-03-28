@@ -1,7 +1,5 @@
 """Tests for linker module."""
 
-from __future__ import annotations
-
 import errno
 import shutil
 from pathlib import Path

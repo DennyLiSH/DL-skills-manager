@@ -1,7 +1,5 @@
 """Unit tests for core.commands._shared module."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,11 +9,19 @@ from dl_skills_manager.core.commands._shared import (
     find_skill_dir,
     find_version_dir,
 )
+from dl_skills_manager.core.config import SkillSyncConfig
 from dl_skills_manager.core.exceptions import (
-    ConfigError,
     SkillNotFoundError,
     VersionNotFoundError,
 )
+
+
+def _mock_config(repo_path: Path) -> SkillSyncConfig:
+    return SkillSyncConfig(
+        path=repo_path,
+        skills_store=repo_path / "skills",
+        default_link_mode="copy",
+    )
 
 
 class TestFindSkillDir:
@@ -23,21 +29,26 @@ class TestFindSkillDir:
 
     def test_find_skill_dir_valid(self, skills_repo_dir: Path) -> None:
         """Test finding an existing skill."""
-        # skills_repo_dir is .skill-sync with config.toml
-        # Create a skill in the skills directory
         skills_dir = skills_repo_dir / "skills"
         skill_dir = skills_dir / "test-skill"
         skill_dir.mkdir()
 
-        result = find_skill_dir("test-skill")
+        with patch(
+            "dl_skills_manager.core.commands._shared.load_config",
+            return_value=_mock_config(skills_repo_dir),
+        ):
+            result = find_skill_dir("test-skill")
         assert result == skill_dir
 
     def test_find_skill_dir_not_found(self, skills_repo_dir: Path) -> None:
         """Test error when skill does not exist."""
-        skills_dir = skills_repo_dir / "skills"
-        # No skills created
-
-        with pytest.raises(SkillNotFoundError, match="not found"):
+        with (
+            patch(
+                "dl_skills_manager.core.commands._shared.load_config",
+                return_value=_mock_config(skills_repo_dir),
+            ),
+            pytest.raises(SkillNotFoundError, match="not found"),
+        ):
             find_skill_dir("nonexistent")
 
     @pytest.mark.parametrize(
@@ -53,7 +64,6 @@ class TestFindSkillDir:
         self, skills_repo_dir: Path, skill_name: str, expected_match: str
     ) -> None:
         """Test path traversal attempts are rejected."""
-        # skills_repo_dir fixture already creates skills/ directory
         with pytest.raises(ValueError, match=expected_match):
             find_skill_dir(skill_name)
 
@@ -81,27 +91,27 @@ class TestFindVersionDir:
         with pytest.raises(VersionNotFoundError, match="not found"):
             find_version_dir(skill_dir, "v2026.03.23")
 
-    def test_find_version_dir_no_versions(self, skills_repo_dir: Path) -> None:
-        """Test error when no versions exist."""
+    def test_find_version_dir_latest_returns_skill_dir(
+        self, skills_repo_dir: Path
+    ) -> None:
+        """Test that no version specified returns the skill dir itself (latest)."""
         skills_dir = skills_repo_dir / "skills"
         skill_dir = skills_dir / "test-skill"
         skill_dir.mkdir()
 
-        with pytest.raises(VersionNotFoundError, match="No version found"):
-            find_version_dir(skill_dir)
-
-    def test_find_version_dir_with_malformed_yaml(self, skills_repo_dir: Path) -> None:
-        """Test that malformed skill.yaml falls back to version directory."""
-        skills_dir = skills_repo_dir / "skills"
-        skill_dir = skills_dir / "test-skill"
-        skill_dir.mkdir()
-        version_dir = skill_dir / "v2026.03.23"
-        version_dir.mkdir()
-
-        # Create malformed skill.yaml
-        skill_yaml = skill_dir / "skill.yaml"
-        skill_yaml.write_bytes(b"invalid: toml: content: [")
-
-        # Should fall back to the version directory
         result = find_version_dir(skill_dir)
-        assert result == version_dir
+        assert result == skill_dir
+
+    def test_find_version_dir_from_bk(self, skills_repo_dir: Path) -> None:
+        """Test finding a version from .bk/ directory."""
+        skills_dir = skills_repo_dir / "skills"
+        skill_dir = skills_dir / "test-skill"
+        skill_dir.mkdir()
+
+        bk_dir = skills_dir / ".bk"
+        bk_dir.mkdir()
+        bk_version = bk_dir / "test-skill@v2026.03.20"
+        bk_version.mkdir()
+
+        result = find_version_dir(skill_dir, "v2026.03.20")
+        assert result == bk_version

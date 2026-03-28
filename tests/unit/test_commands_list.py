@@ -1,40 +1,43 @@
 """Tests for list command."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 import tomli_w
 
 from dl_skills_manager.cli import main
 from dl_skills_manager.core.commands.list import list_skills
+from dl_skills_manager.core.config import SkillSyncConfig
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
 
 
+def _mock_config(repo_path: Path) -> SkillSyncConfig:
+    return SkillSyncConfig(
+        path=repo_path,
+        skills_store=repo_path / "skills",
+        default_link_mode="copy",
+    )
+
+
 @pytest.fixture
 def initialized_repo(tmp_path: Path) -> Path:
-    """Create an initialized repository with some skills.
-
-    Creates the new architecture:
-    - tmp_path/.skill-sync/config.toml (config dir)
-    - tmp_path/.skill-sync/skills/ (skills storage)
-    """
+    """Create an initialized repository with some skills."""
     config_dir = tmp_path / ".skill-sync"
     config_dir.mkdir()
     skills_dir = config_dir / "skills"
     skills_dir.mkdir()
 
-    # Create config.toml with skills_store
+    # Create config.toml
     config_path = config_dir / "config.toml"
     with config_path.open("wb") as f:
         tomli_w.dump(
             {
-                "repo": {"name": "test", "skills_store": str(skills_dir)},
-                "settings": {"default_link_mode": "symlink", "fallback_to_copy": True},
+                "basic": {"path": str(config_dir), "skills_store": str(skills_dir)},
+                "settings": {"default_link_mode": "symlink"},
             },
             f,
         )
@@ -59,7 +62,6 @@ class TestListSkills:
 
     def test_list_skills_empty(self, tmp_path: Path) -> None:
         """Test list_skills returns empty list when no skills."""
-        # Create proper config structure
         config_dir = tmp_path / ".skill-sync"
         config_dir.mkdir()
         skills_dir = config_dir / "skills"
@@ -68,19 +70,32 @@ class TestListSkills:
         with config_path.open("wb") as f:
             tomli_w.dump(
                 {
-                    "repo": {"name": "test", "skills_store": str(skills_dir)},
-                    "settings": {"default_link_mode": "symlink", "fallback_to_copy": True},
+                    "basic": {
+                        "path": str(config_dir),
+                        "skills_store": str(skills_dir),
+                    },
+                    "settings": {"default_link_mode": "symlink"},
                 },
                 f,
             )
 
-        skills, warnings = list_skills(config_dir)
+        mock_cfg = _mock_config(config_dir)
+        with patch(
+            "dl_skills_manager.core.commands.list.load_config",
+            return_value=mock_cfg,
+        ):
+            skills, warnings = list_skills()
         assert skills == []
         assert warnings == []
 
     def test_list_skills_with_skills(self, initialized_repo: Path) -> None:
         """Test list_skills returns skills info."""
-        skills, warnings = list_skills(initialized_repo)
+        mock_cfg = _mock_config(initialized_repo)
+        with patch(
+            "dl_skills_manager.core.commands.list.load_config",
+            return_value=mock_cfg,
+        ):
+            skills, warnings = list_skills()
         assert len(skills) == 1
         assert skills[0].name == "test-skill"
         assert skills[0].description == ""
@@ -90,21 +105,32 @@ class TestListSkills:
 
 
 class TestListCommand:
-    """Tests for list command."""
+    """Tests for list CLI command."""
 
     def test_list_no_repo(self, cli_runner: CliRunner, tmp_path: Path) -> None:
-        """Test list with non-existent repo."""
-        # Point to a path that doesn't exist
-        result = cli_runner.invoke(
-            main, ["list", "--repo", str(tmp_path / "nonexistent")]
-        )
+        """Test list with non-existent config."""
+        config_dir = tmp_path / ".skill-sync"
+        config_dir.mkdir()
+        (config_dir / "skills").mkdir()
+        # No config.toml → load_config will fail
+
+        with patch(
+            "dl_skills_manager.core.config.get_default_repo_path",
+            return_value=config_dir,
+        ):
+            result = cli_runner.invoke(main, ["list"])
         assert result.exit_code == 1
 
     def test_list_with_skills(
         self, cli_runner: CliRunner, initialized_repo: Path
     ) -> None:
         """Test list shows skills."""
-        result = cli_runner.invoke(main, ["list", "--repo", str(initialized_repo)])
+        mock_cfg = _mock_config(initialized_repo)
+        with patch(
+            "dl_skills_manager.core.commands.list.load_config",
+            return_value=mock_cfg,
+        ):
+            result = cli_runner.invoke(main, ["list"])
 
         assert result.exit_code == 0
         assert "test-skill" in result.output

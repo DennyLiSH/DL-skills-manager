@@ -1,7 +1,5 @@
 """Tests for install command."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -26,7 +24,10 @@ def repo_with_skill(tmp_path: Path) -> Path:
     with config_path.open("wb") as f:
         tomli_w.dump(
             {
-                "basic": {"path": str(repo_path), "skills_store": str(repo_path / "skills")},
+                "basic": {
+                    "path": str(repo_path),
+                    "skills_store": str(repo_path / "skills"),
+                },
                 "settings": {
                     "default_link_mode": "symlink",
                 },
