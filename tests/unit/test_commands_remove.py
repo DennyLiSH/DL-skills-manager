@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 import tomli_w
@@ -83,3 +84,57 @@ class TestRemoveCommand:
         )
 
         assert result.exit_code != 0
+
+    def test_remove_global(
+        self, cli_runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """Test removing a skill from global ~/.claude/skills/."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        global_skills = fake_home / ".claude" / "skills"
+        skill_dir = global_skills / "test-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# Test Skill\n")
+
+        with patch(
+            "dl_skills_manager.core.commands._shared.Path.home",
+            return_value=fake_home,
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["remove", "--global", "test-skill"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "Removed test-skill from global skills" in result.output
+        assert not skill_dir.exists()
+
+    def test_remove_global_nonexistent(
+        self, cli_runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """Test removing a nonexistent global skill."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+
+        with patch(
+            "dl_skills_manager.core.commands._shared.Path.home",
+            return_value=fake_home,
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["remove", "--global", "nonexistent"],
+            )
+
+        assert "not installed in global skills" in result.output
+
+    def test_remove_global_with_explicit_project_errors(
+        self, cli_runner: CliRunner, project_with_skill: Path
+    ) -> None:
+        """Test --global with explicit PROJECT path raises error."""
+        result = cli_runner.invoke(
+            main,
+            ["remove", "--global", "test-skill", str(project_with_skill)],
+        )
+
+        assert result.exit_code != 0
+        assert "Cannot specify both --global and a PROJECT path" in result.output

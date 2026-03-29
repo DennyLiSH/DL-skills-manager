@@ -36,6 +36,7 @@ __all__ = [
     "find_version_dir",
     "get_latest_file_timestamp",
     "install_skill_copy",
+    "resolve_skills_target_dir",
     "update_skill_copy",
     "validate_skill_name",
 ]
@@ -201,19 +202,45 @@ def atomic_write_toml(path: Path, data: Mapping[str, object] | object) -> None:
                 tmp_path.unlink()
 
 
+def resolve_skills_target_dir(
+    *, global_flag: bool, project_path: Path | None = None
+) -> Path:
+    """Resolve the target directory for skill installation.
+
+    Args:
+        global_flag: If True, resolve to ~/.claude/skills/.
+        project_path: Project path (required when global_flag is False).
+
+    Returns:
+        Resolved target skills directory path.
+
+    Raises:
+        ValidationError: If global_flag is False and project_path is None.
+    """
+    if global_flag:
+        target = Path.home() / ".claude" / "skills"
+    else:
+        if project_path is None:
+            raise ValidationError("project_path required for local installation")
+        target = project_path / ".claude" / "skills"
+
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
 def install_skill_copy(
-    project_path: Path,
+    target_skills_dir: Path,
     name: str,
     skill_dir: Path,
     version_dir: Path,
 ) -> Path:
-    """Copy a skill into the project (for fresh installs).
+    """Copy a skill into the target directory (for fresh installs).
 
     Always uses directory copy. The target folder name is just {name},
     without any version suffix.
 
     Args:
-        project_path: Path to the project.
+        target_skills_dir: Path to the target skills directory.
         name: Skill name (used for target folder name).
         skill_dir: Path to the skill directory in the repo.
         version_dir: Path to the version directory to copy.
@@ -224,7 +251,7 @@ def install_skill_copy(
     Raises:
         LinkError: If copy operation fails.
     """
-    project_skill_copy = project_path / ".claude" / "skills" / name
+    project_skill_copy = target_skills_dir / name
 
     copy_skill_dir(version_dir, project_skill_copy, force=True)
 
@@ -232,7 +259,7 @@ def install_skill_copy(
 
 
 def update_skill_copy(
-    project_path: Path,
+    target_skills_dir: Path,
     name: str,
     skill_dir: Path,
     version_dir: Path,
@@ -243,7 +270,7 @@ def update_skill_copy(
     from backup. Backup is deleted on success.
 
     Args:
-        project_path: Path to the project.
+        target_skills_dir: Path to the target skills directory.
         name: Skill name.
         skill_dir: Path to the skill directory in the repo.
         version_dir: Path to the version directory to copy.
@@ -254,8 +281,8 @@ def update_skill_copy(
     Raises:
         LinkError: If the update operation fails.
     """
-    project_skill_path = project_path / ".claude" / "skills" / name
-    backup_path = project_path / ".claude" / "skills" / f"{name}.bk"
+    project_skill_path = target_skills_dir / name
+    backup_path = target_skills_dir / f"{name}.bk"
 
     # Remove any stale backup from previous failed update
     if backup_path.exists():

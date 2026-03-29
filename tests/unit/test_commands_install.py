@@ -143,3 +143,51 @@ class TestInstallCommand:
 
         assert result.exit_code == 0, result.output
         assert "v2026.03.22" in result.output
+
+    def test_install_global(
+        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+    ) -> None:
+        """Test installing a skill globally to ~/.claude/skills/."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        mock_config = _make_mock_config(repo_with_skill)
+
+        with (
+            patch(
+                "dl_skills_manager.core.commands.install.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.Path.home",
+                return_value=fake_home,
+            ),
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["install", "--global", "test-skill"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "Installed test-skill@latest" in result.output
+
+        # Check skill was installed to global location
+        skill_link = fake_home / ".claude" / "skills" / "test-skill"
+        assert skill_link.exists()
+
+    def test_install_global_with_explicit_project_errors(
+        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    ) -> None:
+        """Test --global with explicit PROJECT path raises error."""
+        mock_config = _make_mock_config(repo_with_skill)
+
+        with patch(
+            "dl_skills_manager.core.commands.install.load_config",
+            return_value=mock_config,
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["install", "--global", "test-skill", str(project_dir)],
+            )
+
+        assert result.exit_code != 0
+        assert "Cannot specify both --global and a PROJECT path" in result.output

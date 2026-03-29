@@ -105,3 +105,55 @@ class TestUpdateCommand:
 
         assert result.exit_code != 0
         assert "not found" in result.output.lower()
+
+    def test_update_global(
+        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+    ) -> None:
+        """Test updating a skill globally."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        # Pre-install old version in global dir
+        global_skills = fake_home / ".claude" / "skills"
+        old_skill = global_skills / "test-skill"
+        old_skill.mkdir(parents=True)
+        (old_skill / "SKILL.md").write_text("# Old Version\n")
+
+        mock_cfg = mock_config(repo_with_skill)
+        with (
+            patch(
+                "dl_skills_manager.core.commands.update.load_config",
+                return_value=mock_cfg,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.load_config",
+                return_value=mock_cfg,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.Path.home",
+                return_value=fake_home,
+            ),
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["update", "--global", "test-skill"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "Updated test-skill" in result.output
+
+    def test_update_global_with_explicit_project_errors(
+        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    ) -> None:
+        """Test --global with explicit PROJECT path raises error."""
+        mock_cfg = mock_config(repo_with_skill)
+        with patch(
+            "dl_skills_manager.core.commands.update.load_config",
+            return_value=mock_cfg,
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["update", "--global", "test-skill", str(project_dir)],
+            )
+
+        assert result.exit_code != 0
+        assert "Cannot specify both --global and a PROJECT path" in result.output

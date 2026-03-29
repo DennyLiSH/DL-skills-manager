@@ -8,6 +8,7 @@ import pytest
 from dl_skills_manager.core.commands._shared import (
     find_skill_dir,
     find_version_dir,
+    resolve_skills_target_dir,
 )
 from dl_skills_manager.core.exceptions import (
     SkillNotFoundError,
@@ -108,3 +109,42 @@ class TestFindVersionDir:
 
         result = find_version_dir(skill_dir, "v2026.03.20")
         assert result == bk_version
+
+
+class TestResolveSkillsTargetDir:
+    """Tests for resolve_skills_target_dir function."""
+
+    def test_global_returns_home_claude_skills(self, tmp_path: Path) -> None:
+        """Test global flag resolves to ~/.claude/skills/."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        with patch("dl_skills_manager.core.commands._shared.Path.home", return_value=fake_home):
+            result = resolve_skills_target_dir(global_flag=True)
+
+        assert result == fake_home / ".claude" / "skills"
+        assert result.exists()
+
+    def test_local_returns_project_claude_skills(self, tmp_path: Path) -> None:
+        """Test local resolves to {project}/.claude/skills/."""
+        project = tmp_path / "my-project"
+        project.mkdir()
+
+        result = resolve_skills_target_dir(global_flag=False, project_path=project)
+
+        assert result == project / ".claude" / "skills"
+        assert result.exists()
+
+    def test_local_without_project_path_raises(self) -> None:
+        """Test error when local but no project_path provided."""
+        with pytest.raises(ValidationError, match="project_path required"):
+            resolve_skills_target_dir(global_flag=False)
+
+    def test_creates_directory_if_missing(self, tmp_path: Path) -> None:
+        """Test that the target directory is created when missing."""
+        project = tmp_path / "new-project"
+        project.mkdir()
+        assert not (project / ".claude" / "skills").exists()
+
+        result = resolve_skills_target_dir(global_flag=False, project_path=project)
+
+        assert result.exists()
