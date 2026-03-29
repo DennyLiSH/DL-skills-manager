@@ -20,27 +20,29 @@ def initialized_repo(tmp_path: Path) -> Path:
     """Create an initialized repository with some skills."""
     config_dir = tmp_path / ".skill-sync"
     config_dir.mkdir()
-    skills_dir = config_dir / "skills"
-    skills_dir.mkdir()
+    data_dir = config_dir / "data"
+    data_dir.mkdir()
+    skills_subdir = data_dir / "skills"
+    skills_subdir.mkdir()
 
     # Create config.toml
     config_path = config_dir / "config.toml"
     with config_path.open("wb") as f:
         tomli_w.dump(
             {
-                "basic": {"path": str(config_dir), "skills_store": str(skills_dir)},
+                "basic": {"path": str(config_dir), "skills_store": str(data_dir)},
                 "settings": {"default_link_mode": "symlink"},
             },
             f,
         )
 
     # Create a test skill (must contain SKILL.md to be recognized)
-    skill_dir = skills_dir / "test-skill"
+    skill_dir = skills_subdir / "test-skill"
     skill_dir.mkdir()
     (skill_dir / "SKILL.md").write_text("# Test Skill\n")
 
     # Create a history version in .bk
-    bk_dir = skills_dir / ".bk"
+    bk_dir = data_dir / ".bk"
     bk_dir.mkdir()
     bk_skill_dir = bk_dir / "test-skill@v2026.03.22"
     bk_skill_dir.mkdir()
@@ -56,15 +58,15 @@ class TestListSkills:
         """Test list_skills returns empty list when no skills."""
         config_dir = tmp_path / ".skill-sync"
         config_dir.mkdir()
-        skills_dir = config_dir / "skills"
-        skills_dir.mkdir()
+        data_dir = config_dir / "data"
+        data_dir.mkdir()
         config_path = config_dir / "config.toml"
         with config_path.open("wb") as f:
             tomli_w.dump(
                 {
                     "basic": {
                         "path": str(config_dir),
-                        "skills_store": str(skills_dir),
+                        "skills_store": str(data_dir),
                     },
                     "settings": {"default_link_mode": "symlink"},
                 },
@@ -99,7 +101,7 @@ class TestListCommand:
         """Test list with non-existent config."""
         config_dir = tmp_path / ".skill-sync"
         config_dir.mkdir()
-        (config_dir / "skills").mkdir()
+        (config_dir / "data").mkdir()
         # No config.toml → load_config will fail
 
         with patch(

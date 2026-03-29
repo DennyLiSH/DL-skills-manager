@@ -19,12 +19,13 @@ def repo_with_dev_skill(tmp_path: Path) -> Path:
     """Create a repository with a skill in .dev/."""
     repo_path = tmp_path / ".skill-sync"
     repo_path.mkdir()
-    skills_dir = repo_path / "skills"
-    skills_dir.mkdir()
-    (skills_dir / ".bk").mkdir()
+    data_dir = repo_path / "data"
+    data_dir.mkdir()
+    (data_dir / "skills").mkdir()
+    (data_dir / ".bk").mkdir()
 
     # Create .dev/skill
-    dev_dir = skills_dir / ".dev" / "my-skill"
+    dev_dir = data_dir / ".dev" / "my-skill"
     dev_dir.mkdir(parents=True)
     (dev_dir / "SKILL.md").write_text("# My Skill\n")
 
@@ -35,7 +36,7 @@ def repo_with_dev_skill(tmp_path: Path) -> Path:
             {
                 "basic": {
                     "path": str(repo_path),
-                    "skills_store": str(skills_dir),
+                    "skills_store": str(data_dir),
                 },
                 "settings": {"default_link_mode": "copy"},
             },
@@ -51,7 +52,7 @@ class TestMtpCommand:
     def test_mtp_copies_to_production(
         self, cli_runner: CliRunner, repo_with_dev_skill: Path
     ) -> None:
-        """Test mtp copies .dev skill to skills_store root."""
+        """Test mtp copies .dev skill to skills_store/skills/."""
         with patch(
             "dl_skills_manager.core.commands.mtp.load_config",
             return_value=mock_config(repo_with_dev_skill),
@@ -61,13 +62,13 @@ class TestMtpCommand:
         assert result.exit_code == 0, result.output
         assert "Moved 'my-skill' to production" in result.output
 
-        # Verify skill exists at root
-        target = repo_with_dev_skill / "skills" / "my-skill"
+        # Verify skill exists at skills/ subdirectory
+        target = repo_with_dev_skill / "data" / "skills" / "my-skill"
         assert target.exists()
         assert (target / "SKILL.md").read_text() == "# My Skill\n"
 
         # Verify backup exists in .bk
-        bk_dir = repo_with_dev_skill / "skills" / ".bk"
+        bk_dir = repo_with_dev_skill / "data" / ".bk"
         bk_entries = list(bk_dir.iterdir())
         assert len(bk_entries) == 1
         assert bk_entries[0].name.startswith("my-skill@v")
@@ -75,11 +76,11 @@ class TestMtpCommand:
     def test_mtp_overwrites_existing(
         self, cli_runner: CliRunner, repo_with_dev_skill: Path
     ) -> None:
-        """Test mtp overwrites existing skill in skills_store."""
-        skills_store = repo_with_dev_skill / "skills"
+        """Test mtp overwrites existing skill in skills_store/skills/."""
+        skills_subdir = repo_with_dev_skill / "data" / "skills"
 
-        # Create existing skill at root (old version)
-        existing = skills_store / "my-skill"
+        # Create existing skill (old version)
+        existing = skills_subdir / "my-skill"
         existing.mkdir()
         (existing / "SKILL.md").write_text("# Old Version\n")
 
@@ -106,7 +107,7 @@ class TestMtpCommand:
 
         assert result.exit_code == 0, result.output
 
-        bk_dir = repo_with_dev_skill / "skills" / ".bk"
+        bk_dir = repo_with_dev_skill / "data" / ".bk"
         bk_entries = list(bk_dir.iterdir())
         version_name = bk_entries[0].name
 
@@ -124,7 +125,7 @@ class TestMtpCommand:
         self, cli_runner: CliRunner, repo_with_dev_skill: Path
     ) -> None:
         """Test same-day mtp increments version suffix."""
-        bk_dir = repo_with_dev_skill / "skills" / ".bk"
+        bk_dir = repo_with_dev_skill / "data" / ".bk"
 
         # Create existing backup with same base version
         with patch(
@@ -136,7 +137,7 @@ class TestMtpCommand:
             assert result1.exit_code == 0, result1.output
 
             # Re-create .dev skill for second mtp
-            dev_dir = repo_with_dev_skill / "skills" / ".dev" / "my-skill"
+            dev_dir = repo_with_dev_skill / "data" / ".dev" / "my-skill"
             dev_dir.mkdir(parents=True, exist_ok=True)
             (dev_dir / "SKILL.md").write_text("# Updated Skill\n")
 

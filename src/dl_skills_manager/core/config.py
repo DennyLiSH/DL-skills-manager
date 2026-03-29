@@ -76,7 +76,7 @@ def load_config() -> SkillSyncConfig:
     if skills_store_str:
         skills_store = expand_path(skills_store_str)
     else:
-        skills_store = repo_path / "skills"
+        skills_store = repo_path / "data"
 
     # Load path from config, default to repo_path
     path_str = basic_data.get("path", None)

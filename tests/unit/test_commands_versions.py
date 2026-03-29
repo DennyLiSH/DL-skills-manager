@@ -19,27 +19,29 @@ def repo_with_versions(tmp_path: Path) -> Path:
     """Create a repository with multiple versions in .bk/."""
     repo_path = tmp_path / ".skill-sync"
     repo_path.mkdir()
-    skills_dir = repo_path / "skills"
-    skills_dir.mkdir()
+    data_dir = repo_path / "data"
+    data_dir.mkdir()
+    skills_subdir = data_dir / "skills"
+    skills_subdir.mkdir()
 
     # Create config.toml
     config_path = repo_path / "config.toml"
     with config_path.open("wb") as f:
         tomli_w.dump(
             {
-                "basic": {"path": str(repo_path), "skills_store": str(skills_dir)},
+                "basic": {"path": str(repo_path), "skills_store": str(data_dir)},
                 "settings": {"default_link_mode": "symlink"},
             },
             f,
         )
 
     # Create current skill
-    skill_dir = skills_dir / "test-skill"
+    skill_dir = skills_subdir / "test-skill"
     skill_dir.mkdir()
     (skill_dir / "SKILL.md").write_text("# Current\n")
 
     # Create history versions in .bk/
-    bk_dir = skills_dir / ".bk"
+    bk_dir = data_dir / ".bk"
     bk_dir.mkdir()
 
     for version in ["v2026.03.20", "v2026.03.23", "v2026.03.25-dev"]:

@@ -80,7 +80,7 @@ def mtp(name: str) -> None:
 
     version = _resolve_version(dev_dir, name, bk_dir)
 
-    target = skills_store / name
+    target = skills_store / "skills" / name
 
     try:
         if target.exists():

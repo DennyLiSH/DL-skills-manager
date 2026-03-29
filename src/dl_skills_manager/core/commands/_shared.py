@@ -103,7 +103,7 @@ def find_skill_dir(name: str, *, config: SkillSyncConfig | None = None) -> Path:
     if config is None:
         config = load_config()
     skills_base = config.skills_store.resolve()
-    skill_dir = skills_base / name
+    skill_dir = skills_base / "skills" / name
 
     # Verify the resolved path is still within the skills directory
     try:
@@ -137,7 +137,7 @@ def find_version_dir(skill_dir: Path, version: str | None = None) -> Path:
             return requested_version_path
 
         # Check .bk directory for history versions
-        bk_path = skill_dir.parent / ".bk" / f"{skill_dir.name}@{version}"
+        bk_path = skill_dir.parent.parent / ".bk" / f"{skill_dir.name}@{version}"
         if bk_path.exists():
             return bk_path
 

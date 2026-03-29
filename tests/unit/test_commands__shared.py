@@ -23,8 +23,9 @@ class TestFindSkillDir:
 
     def test_find_skill_dir_valid(self, skills_repo_dir: Path) -> None:
         """Test finding an existing skill."""
-        skills_dir = skills_repo_dir / "skills"
-        skill_dir = skills_dir / "test-skill"
+        skills_subdir = skills_repo_dir / "data" / "skills"
+        skills_subdir.mkdir(parents=True, exist_ok=True)
+        skill_dir = skills_subdir / "test-skill"
         skill_dir.mkdir()
 
         with patch(
@@ -67,8 +68,9 @@ class TestFindVersionDir:
 
     def test_find_version_dir_specific_version(self, skills_repo_dir: Path) -> None:
         """Test finding a specific version directory."""
-        skills_dir = skills_repo_dir / "skills"
-        skill_dir = skills_dir / "test-skill"
+        skills_subdir = skills_repo_dir / "data" / "skills"
+        skills_subdir.mkdir(parents=True, exist_ok=True)
+        skill_dir = skills_subdir / "test-skill"
         skill_dir.mkdir()
         version_dir = skill_dir / "v2026.03.23"
         version_dir.mkdir()
@@ -78,8 +80,9 @@ class TestFindVersionDir:
 
     def test_find_version_dir_specific_not_found(self, skills_repo_dir: Path) -> None:
         """Test error when specific version does not exist."""
-        skills_dir = skills_repo_dir / "skills"
-        skill_dir = skills_dir / "test-skill"
+        skills_subdir = skills_repo_dir / "data" / "skills"
+        skills_subdir.mkdir(parents=True, exist_ok=True)
+        skill_dir = skills_subdir / "test-skill"
         skill_dir.mkdir()
 
         with pytest.raises(VersionNotFoundError, match="not found"):
@@ -89,8 +92,9 @@ class TestFindVersionDir:
         self, skills_repo_dir: Path
     ) -> None:
         """Test that no version specified returns the skill dir itself (latest)."""
-        skills_dir = skills_repo_dir / "skills"
-        skill_dir = skills_dir / "test-skill"
+        skills_subdir = skills_repo_dir / "data" / "skills"
+        skills_subdir.mkdir(parents=True, exist_ok=True)
+        skill_dir = skills_subdir / "test-skill"
         skill_dir.mkdir()
 
         result = find_version_dir(skill_dir)
@@ -98,12 +102,14 @@ class TestFindVersionDir:
 
     def test_find_version_dir_from_bk(self, skills_repo_dir: Path) -> None:
         """Test finding a version from .bk/ directory."""
-        skills_dir = skills_repo_dir / "skills"
-        skill_dir = skills_dir / "test-skill"
+        data_dir = skills_repo_dir / "data"
+        skills_subdir = data_dir / "skills"
+        skills_subdir.mkdir(parents=True, exist_ok=True)
+        skill_dir = skills_subdir / "test-skill"
         skill_dir.mkdir()
 
-        bk_dir = skills_dir / ".bk"
-        bk_dir.mkdir()
+        bk_dir = data_dir / ".bk"
+        bk_dir.mkdir(parents=True, exist_ok=True)
         bk_version = bk_dir / "test-skill@v2026.03.20"
         bk_version.mkdir()
 

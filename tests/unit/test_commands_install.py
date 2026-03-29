@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 def _make_mock_config(repo_path: Path) -> SkillSyncConfig:
     return SkillSyncConfig(
         path=repo_path,
-        skills_store=repo_path / "skills",
+        skills_store=repo_path / "data",
         default_link_mode="symlink",
     )
 
@@ -27,7 +27,10 @@ def repo_with_skill(tmp_path: Path) -> Path:
     """Create an initialized repository with a skill."""
     repo_path = tmp_path / ".skill-sync"
     repo_path.mkdir()
-    (repo_path / "skills").mkdir()
+    data_dir = repo_path / "data"
+    data_dir.mkdir()
+    skills_subdir = data_dir / "skills"
+    skills_subdir.mkdir()
 
     # Create config.toml with [basic] section
     config_path = repo_path / "config.toml"
@@ -36,7 +39,7 @@ def repo_with_skill(tmp_path: Path) -> Path:
             {
                 "basic": {
                     "path": str(repo_path),
-                    "skills_store": str(repo_path / "skills"),
+                    "skills_store": str(data_dir),
                 },
                 "settings": {
                     "default_link_mode": "symlink",
@@ -46,11 +49,11 @@ def repo_with_skill(tmp_path: Path) -> Path:
         )
 
     # Create .bk directory
-    bk_dir = repo_path / "skills" / ".bk"
+    bk_dir = data_dir / ".bk"
     bk_dir.mkdir()
 
     # Create a test skill
-    skill_dir = repo_path / "skills" / "test-skill"
+    skill_dir = skills_subdir / "test-skill"
     skill_dir.mkdir()
     (skill_dir / "SKILL.md").write_text("# Test Skill\n")
 
@@ -121,7 +124,7 @@ class TestInstallCommand:
     ) -> None:
         """Test installing a specific version from .bk."""
         # Create a history version in .bk
-        bk_dir = repo_with_skill / "skills" / ".bk"
+        bk_dir = repo_with_skill / "data" / ".bk"
         bk_version_dir = bk_dir / "test-skill@v2026.03.22"
         bk_version_dir.mkdir()
         (bk_version_dir / "SKILL.md").write_text("# Old Version\n")

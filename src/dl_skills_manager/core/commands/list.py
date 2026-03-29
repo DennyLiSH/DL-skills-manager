@@ -15,11 +15,15 @@ def list_skills() -> list[SkillInfo]:
         List of skill information objects.
     """
     config = load_config()
-    skills_dir = config.skills_store
-    if not skills_dir.exists():
+    skills_store = config.skills_store
+    if not skills_store.exists():
         return []
 
-    bk_dir = skills_dir / ".bk"
+    skills_subdir = skills_store / "skills"
+    if not skills_subdir.exists():
+        return []
+
+    bk_dir = skills_store / ".bk"
     history_map: dict[str, list[str]] = {}
     skills: list[SkillInfo] = []
 
@@ -34,12 +38,9 @@ def list_skills() -> list[SkillInfo]:
                     history_map[skill_name] = []
                 history_map[skill_name].append(version)
 
-    # Scan skills_store for valid skills
-    for skill_dir in sorted(skills_dir.iterdir()):
+    # Scan skills/ subdirectory for valid skills
+    for skill_dir in sorted(skills_subdir.iterdir()):
         if not skill_dir.is_dir():
-            continue
-        # Skip .bk directory itself
-        if skill_dir.name == ".bk":
             continue
 
         # Only directories containing SKILL.md are considered skills

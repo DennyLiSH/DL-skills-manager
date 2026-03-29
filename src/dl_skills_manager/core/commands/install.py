@@ -49,7 +49,7 @@ def install(name: str, project: str, is_global: bool) -> None:
     if version:
         version_dir = skills_store / ".bk" / f"{name}@{version}"
     else:
-        version_dir = skills_store / name  # latest
+        version_dir = skills_store / "skills" / name  # latest
 
     # Resolve target skills directory
     if is_global:

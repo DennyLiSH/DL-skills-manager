@@ -13,19 +13,21 @@ def skills_repo_dir(tmp_path: Path) -> Path:
 
     Creates the new architecture:
     - tmp_path/.skill-sync/config.toml
-    - tmp_path/.skill-sync/skills/
+    - tmp_path/.skill-sync/data/
+    - tmp_path/.skill-sync/data/skills/
     """
     config_dir = tmp_path / ".skill-sync"
     config_dir.mkdir()
-    skills_dir = config_dir / "skills"
-    skills_dir.mkdir()
+    data_dir = config_dir / "data"
+    data_dir.mkdir()
+    (data_dir / "skills").mkdir()
 
     # Create config.toml
     config_path = config_dir / "config.toml"
     with config_path.open("wb") as f:
         tomli_w.dump(
             {
-                "basic": {"path": str(config_dir), "skills_store": str(skills_dir)},
+                "basic": {"path": str(config_dir), "skills_store": str(data_dir)},
                 "settings": {"default_link_mode": "symlink", "fallback_to_copy": True},
             },
             f,

@@ -20,7 +20,7 @@ from dl_skills_manager.core.exceptions import (
     "--skills-path",
     type=click.Path(),
     default=None,
-    help="Path to skills storage root (default: ~/.skill-sync/skills/)",
+    help="Path to skills storage root (default: ~/.skill-sync/data/)",
 )
 @click.option(
     "--link-mode",
@@ -43,8 +43,8 @@ def init(skills_path: str | None, link_mode: str) -> None:
 
     # Determine skills storage path
     if skills_path is None:
-        # Default: create ~/.skill-sync/skills/ subdirectory
-        skills_storage_path = config_path / "skills"
+        # Default: create ~/.skill-sync/data/ subdirectory
+        skills_storage_path = config_path / "data"
     else:
         # Custom path: use directly as skills store root (no skills/ subdirectory)
         skills_storage_path = Path(skills_path).expanduser().resolve()
@@ -53,8 +53,17 @@ def init(skills_path: str | None, link_mode: str) -> None:
     try:
         config_path.mkdir(parents=True, exist_ok=True)
         skills_storage_path.mkdir(parents=True, exist_ok=True)
-        bk_path = skills_storage_path / ".bk"
-        bk_path.mkdir(parents=True, exist_ok=True)
+
+        # Skills subdirectories
+        (skills_storage_path / "skills").mkdir(parents=True, exist_ok=True)
+        (skills_storage_path / ".dev").mkdir(parents=True, exist_ok=True)
+        (skills_storage_path / ".bk").mkdir(parents=True, exist_ok=True)
+        (skills_storage_path / "agents").mkdir(parents=True, exist_ok=True)
+
+        # .claude-plugin with marketplace.json
+        claude_plugin_path = skills_storage_path / ".claude-plugin"
+        claude_plugin_path.mkdir(parents=True, exist_ok=True)
+        (claude_plugin_path / "marketplace.json").write_text("{}")
     except OSError as e:
         raise ConfigError(f"Failed to create directory: {e}") from e
 

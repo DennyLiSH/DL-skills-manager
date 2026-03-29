@@ -19,22 +19,24 @@ def repo_with_skill(tmp_path: Path) -> Path:
     """Create a repository with a skill."""
     repo_path = tmp_path / ".skill-sync"
     repo_path.mkdir()
-    skills_dir = repo_path / "skills"
-    skills_dir.mkdir()
+    data_dir = repo_path / "data"
+    data_dir.mkdir()
+    skills_subdir = data_dir / "skills"
+    skills_subdir.mkdir()
 
     # Create config.toml
     config_path = repo_path / "config.toml"
     with config_path.open("wb") as f:
         tomli_w.dump(
             {
-                "basic": {"path": str(repo_path), "skills_store": str(skills_dir)},
+                "basic": {"path": str(repo_path), "skills_store": str(data_dir)},
                 "settings": {"default_link_mode": "symlink"},
             },
             f,
         )
 
     # Create skill
-    skill_dir = skills_dir / "test-skill"
+    skill_dir = skills_subdir / "test-skill"
     skill_dir.mkdir()
     (skill_dir / "SKILL.md").write_text("# Test Skill\n")
 

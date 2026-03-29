@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dl-skills-manager"
-version = "0.2.0"
+version = "0.3.0"
 description = "Claude Code Skills Manager - Centralized skill repository with on-demand linking"
 requires-python = ">=3.14"
 license = {text = "MIT"}
