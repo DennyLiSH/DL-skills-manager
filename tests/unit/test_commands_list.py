@@ -31,7 +31,7 @@ def initialized_repo(tmp_path: Path) -> Path:
         tomli_w.dump(
             {
                 "basic": {"path": str(config_dir), "skills_store": str(data_dir)},
-                "settings": {"default_link_mode": "symlink"},
+                "settings": {"default_link_mode": "copy"},
             },
             f,
         )
@@ -68,7 +68,7 @@ class TestListSkills:
                         "path": str(config_dir),
                         "skills_store": str(data_dir),
                     },
-                    "settings": {"default_link_mode": "symlink"},
+                    "settings": {"default_link_mode": "copy"},
                 },
                 f,
             )

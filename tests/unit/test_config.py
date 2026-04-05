@@ -51,7 +51,7 @@ class TestCreateDefaultConfig:
         assert isinstance(config, SkillSyncConfig)
         assert config.path == repo_path
         assert config.skills_store == skills_store
-        assert config.default_link_mode == "symlink"
+        assert config.default_link_mode == "copy"
 
 
 class TestLoadConfig:
@@ -112,7 +112,7 @@ skills_store = "/custom/skills"
         ):
             config = load_config()
 
-        assert config.default_link_mode == "symlink"
+        assert config.default_link_mode == "copy"
         # path defaults to repo_path
         assert config.path == repo_path
         assert config.skills_store == Path("/custom/skills")

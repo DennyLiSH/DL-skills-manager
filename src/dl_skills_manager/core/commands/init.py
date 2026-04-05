@@ -25,21 +25,29 @@ from dl_skills_manager.core.exceptions import (
 @click.option(
     "--link-mode",
     type=click.Choice(["symlink", "copy"]),
-    default="symlink",
-    help="Default link mode for skill installation (default: symlink)",
+    default=None,
+    help="Default link mode for skill installation (will prompt if not specified).",
 )
-def init(skills_path: str | None, link_mode: str) -> None:
+def init(skills_path: str | None, link_mode: str | None) -> None:
     """Initialize a new skills repository.
 
     Creates the config directory at ~/.skill-sync/ and skills storage directory.
+    Default link mode is 'copy' for cross-device compatibility.
     """
     # Always use ~/.skill-sync/ as config directory
     config_path = get_default_repo_path()
 
-    # Check if already initialized
+    # Check if already initialized BEFORE prompting
     config_file = config_path / "config.toml"
     if config_file.exists():
         raise RepoAlreadyExistsError(f"Repository already initialized at {config_path}")
+
+    if link_mode is None:
+        link_mode = click.prompt(
+            "Default installation mode",
+            type=click.Choice(["symlink", "copy"]),
+            default="copy",
+        )
 
     # Determine skills storage path
     if skills_path is None:

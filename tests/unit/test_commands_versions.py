@@ -30,7 +30,7 @@ def repo_with_versions(tmp_path: Path) -> Path:
         tomli_w.dump(
             {
                 "basic": {"path": str(repo_path), "skills_store": str(data_dir)},
-                "settings": {"default_link_mode": "symlink"},
+                "settings": {"default_link_mode": "copy"},
             },
             f,
         )

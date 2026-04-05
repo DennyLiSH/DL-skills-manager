@@ -36,11 +36,13 @@ skill-sync init [--skills-path <path>] [--link-mode <mode>]
 | 选项 | 默认值 | 说明 |
 |------|--------|------|
 | `--skills-path` | `~/.skill-sync/data/` | 技能存储根目录 |
-| `--link-mode` | `symlink` | 安装方式：`symlink` 或 `copy` |
+| `--link-mode` | `copy` | 安装方式：`symlink` 或 `copy`（不指定时交互式询问） |
+
+> **为什么默认是 copy？** 考虑到多设备同步场景（不同磁盘架构、跨盘存储），symlink 可能指向不可达路径。copy 模式确保技能文件独立可用。
 
 ### `install` — 安装技能到项目
 
-将技能链接（或复制）到项目的 `.claude/skills/` 目录。
+将技能链接（或复制）到项目的 `.claude/skills/` 目录。安装方式取决于 `config.toml` 中的 `default_link_mode`，可通过 `--link-mode` 覆盖。
 
 ```bash
 # 安装最新版到当前项目
@@ -54,6 +56,9 @@ skill-sync install <skill-name> <project-path>
 
 # 全局安装（~/.claude/skills/）
 skill-sync install <skill-name> --global
+
+# 覆盖 link mode
+skill-sync install <skill-name> --link-mode symlink
 ```
 
 | 参数/选项 | 默认值 | 说明 |
@@ -61,10 +66,11 @@ skill-sync install <skill-name> --global
 | `NAME` | （必填） | 技能名称，支持 `name@version` 语法 |
 | `PROJECT` | `.` | 项目目录路径 |
 | `--global` | `False` | 安装到 `~/.claude/skills/` 而非项目 |
+| `--link-mode` | 从 config.toml 读取 | 覆盖默认安装方式：`symlink` 或 `copy` |
 
 ### `update` — 更新技能
 
-将已安装的技能更新为最新稳定版本。
+将已安装的技能更新为最新稳定版本。如果技能是通过 symlink 安装的，则跳过更新（symlink 已指向仓库最新源）。
 
 ```bash
 # 更新当前项目的技能

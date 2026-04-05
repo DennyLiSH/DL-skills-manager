@@ -26,7 +26,14 @@ class TestWorkflow:
             return_value=mock_config_path,
         ):
             result = cli_runner.invoke(
-                main, ["init", "--skills-path", str(tmp_path / "skills")]
+                main,
+                [
+                    "init",
+                    "--skills-path",
+                    str(tmp_path / "skills"),
+                    "--link-mode",
+                    "copy",
+                ],
             )
 
         assert result.exit_code == 0

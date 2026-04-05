@@ -138,3 +138,47 @@ class TestRemoveCommand:
 
         assert result.exit_code != 0
         assert "Cannot specify both --global and a PROJECT path" in result.output
+
+
+class TestRemoveSymlink:
+    """Tests for remove command symlink handling."""
+
+    def test_remove_symlink_preserves_target(
+        self, cli_runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """Test removing a symlink does not delete the target directory."""
+        # Create the real target directory
+        target_dir = tmp_path / "repo" / "skills" / "test-skill"
+        target_dir.mkdir(parents=True)
+        (target_dir / "SKILL.md").write_text("# Test Skill\n")
+
+        # Create project and symlink
+        project = tmp_path / "project"
+        skills_dir = project / ".claude" / "skills"
+        skills_dir.mkdir(parents=True)
+        symlink_path = skills_dir / "test-skill"
+
+        # Try to create symlink, skip test if not supported
+        try:
+            symlink_path.symlink_to(target_dir)
+        except OSError:
+            pytest.skip("Symlinks not supported on this platform")
+
+        assert symlink_path.is_symlink()
+        assert target_dir.exists()
+
+        result = cli_runner.invoke(
+            main,
+            ["remove", "test-skill", str(project)],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "Removed test-skill" in result.output
+
+        # Symlink should be gone
+        assert not symlink_path.exists()
+        assert not symlink_path.is_symlink()
+
+        # Target directory should be preserved
+        assert target_dir.exists()
+        assert (target_dir / "SKILL.md").exists()

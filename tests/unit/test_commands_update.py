@@ -6,9 +6,9 @@ from unittest.mock import patch
 
 import pytest
 import tomli_w
+from test_helpers import mock_config
 
 from dl_skills_manager.cli import main
-from test_helpers import mock_config
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
@@ -30,7 +30,7 @@ def repo_with_skill(tmp_path: Path) -> Path:
         tomli_w.dump(
             {
                 "basic": {"path": str(repo_path), "skills_store": str(data_dir)},
-                "settings": {"default_link_mode": "symlink"},
+                "settings": {"default_link_mode": "copy"},
             },
             f,
         )
@@ -159,3 +159,65 @@ class TestUpdateCommand:
 
         assert result.exit_code != 0
         assert "Cannot specify both --global and a PROJECT path" in result.output
+
+
+class TestUpdateSymlinkSkip:
+    """Tests for update command symlink skip behavior."""
+
+    def test_update_skips_symlink_with_warning(
+        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    ) -> None:
+        """Test update skips when target is a symlink."""
+        # Create the .claude/skills directory and a mock symlink path
+        skills_dir = project_dir / ".claude" / "skills"
+        skills_dir.mkdir(parents=True)
+
+        mock_cfg = mock_config(repo_with_skill)
+        with (
+            patch(
+                "dl_skills_manager.core.commands.update.load_config",
+                return_value=mock_cfg,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.load_config",
+                return_value=mock_cfg,
+            ),
+            # Mock is_symlink to return True for the skill path
+            patch.object(Path, "is_symlink", return_value=True),
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["update", "test-skill", str(project_dir)],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "symlink" in result.output.lower()
+        assert "No update needed" in result.output
+
+    def test_update_proceeds_with_copy_target(
+        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    ) -> None:
+        """Test update proceeds when target is a regular directory (copy mode)."""
+        # Install old version as regular directory
+        old_skill = project_dir / ".claude" / "skills" / "test-skill"
+        old_skill.mkdir(parents=True)
+        (old_skill / "SKILL.md").write_text("# Old Version\n")
+
+        mock_cfg = mock_config(repo_with_skill)
+        with (
+            patch(
+                "dl_skills_manager.core.commands.update.load_config",
+                return_value=mock_cfg,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.load_config",
+                return_value=mock_cfg,
+            ),
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["update", "test-skill", str(project_dir)],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "Updated test-skill" in result.output

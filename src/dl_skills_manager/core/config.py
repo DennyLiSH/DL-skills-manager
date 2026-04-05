@@ -26,7 +26,7 @@ class SkillSyncConfig:
 
     path: Path
     skills_store: Path
-    default_link_mode: LinkMode  # TBD
+    default_link_mode: LinkMode
 
 
 def expand_path(path_str: str) -> Path:
@@ -64,7 +64,7 @@ def load_config() -> SkillSyncConfig:
     basic_data = data.get("basic", {})
     settings_data = data.get("settings", {})
 
-    default_link_mode = settings_data.get("default_link_mode", "symlink")
+    default_link_mode = settings_data.get("default_link_mode", "copy")
     if default_link_mode not in ("symlink", "copy"):
         raise ConfigError(
             f"Invalid default_link_mode '{default_link_mode}' in config.toml. "
@@ -105,5 +105,5 @@ def create_default_config(repo_path: Path, skills_store: Path) -> SkillSyncConfi
     return SkillSyncConfig(
         path=repo_path,
         skills_store=skills_store,
-        default_link_mode="symlink",
+        default_link_mode="copy",
     )

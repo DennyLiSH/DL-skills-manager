@@ -23,7 +23,9 @@ from dl_skills_manager.core.config import load_config
 def update(name: str, project: str, is_global: bool) -> None:
     """Update a skill to the latest stable version.
 
-    Re-resolves the latest version from the repository and updates the symlink.
+    Re-copies the latest version from the repository. If the skill was
+    installed as a symlink, the update is skipped since the symlink already
+    points to the latest repository source.
     """
     if is_global and project != ".":
         raise click.UsageError("Cannot specify both --global and a PROJECT path.")
@@ -42,14 +44,21 @@ def update(name: str, project: str, is_global: bool) -> None:
     skill_dir = find_skill_dir(name, config=config)
     version_dir = find_version_dir(skill_dir, version=None)
 
-    # Check current installed version via symlink resolution
+    # Check if skill is installed as symlink — skip update
     project_skill_link = target_skills_dir / name
-    current_version: str | None = None
     if project_skill_link.is_symlink():
         resolved = project_skill_link.resolve()
-        current_version = resolved.parent.name
+        click.echo(
+            f"Skill '{name}' is installed as symlink -> {resolved}"
+        )
+        click.echo("No update needed — symlink points directly to repository source.")
+        click.echo(
+            f"To reinstall: skill-sync remove {name} && "
+            f"skill-sync install {name}"
+        )
+        return
 
-    # Create symlink/copy
+    # Copy-installed skill: perform overwrite update
     update_skill_copy(
         target_skills_dir,
         name,
@@ -57,4 +66,4 @@ def update(name: str, project: str, is_global: bool) -> None:
         version_dir,
     )
 
-    click.echo(f"Updated {name} from {current_version or 'none'} to latest")
+    click.echo(f"Updated {name} to latest")
