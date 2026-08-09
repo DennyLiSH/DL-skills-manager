@@ -187,3 +187,43 @@ class TestMklinkCommand:
         assert result.exit_code == 0, result.output
         # some-file.txt should not be mentioned
         assert "some-file" not in result.output
+
+    def test_mklink_global(self, cli_runner: CliRunner, source_dir: Path) -> None:
+        """Test --global links to ~/.claude/skills/."""
+        global_skills_dir = Path.home() / ".claude" / "skills"
+
+        result = cli_runner.invoke(
+            main,
+            ["mklink", "--global", str(source_dir)],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "Linked skill-a" in result.output
+        assert "Linked skill-b" in result.output
+
+        # Verify links exist in global dir
+        assert (global_skills_dir / "skill-a").exists()
+        assert (global_skills_dir / "skill-b").exists()
+
+        # Cleanup
+        import shutil
+
+        for name in ("skill-a", "skill-b"):
+            path = global_skills_dir / name
+            if path.exists():
+                if path.is_symlink() or path.is_dir():
+                    shutil.rmtree(path, ignore_errors=True)
+                else:
+                    path.unlink(missing_ok=True)
+
+    def test_mklink_global_and_project_conflict(
+        self, cli_runner: CliRunner, source_dir: Path, project_dir: Path
+    ) -> None:
+        """Test --global with explicit project path raises error."""
+        result = cli_runner.invoke(
+            main,
+            ["mklink", "--global", str(source_dir), str(project_dir)],
+        )
+
+        assert result.exit_code != 0
+        assert "Cannot specify both --global and a PROJECT path" in result.output

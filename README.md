@@ -91,27 +91,39 @@ skill-sync update <skill-name> --global
 
 ### `mklink` — 批量链接技能
 
-将指定路径下所有含 `SKILL.md` 的子文件夹通过 symlink 批量链接到项目的 `.claude/skills/` 目录。不依赖仓库配置，可从任意源路径链接。
+将**源路径**下所有含 `SKILL.md` 的子文件夹，通过 symlink 批量链接到**目标**的 `.claude/skills/` 目录。不依赖仓库配置，可从任意源路径链接。
 
 ```bash
-# 链接源路径下所有技能到当前项目
+# 基本用法：将源路径下的技能链接到当前项目
+# 源: /path/to/skills/*    目标: ./.claude/skills/
 skill-sync mklink /path/to/skills
 
-# 链接到指定项目目录
+# 指定目标项目目录
+# 源: /path/to/skills/*    目标: <project-path>/.claude/skills/
 skill-sync mklink /path/to/skills <project-path>
 
 # 使用前缀避免命名冲突
+# 源: ~/.claude/skills/gstack/*    目标: ./.claude/skills/gstack-*
 skill-sync mklink ~/.claude/skills/gstack --prefix gstack- .
-# 效果: .claude/skills/gstack-qa → ~/.claude/skills/gstack/qa
+# 实际效果:
+#   ./.claude/skills/gstack-qa     → ~/.claude/skills/gstack/qa
+#   ./.claude/skills/gstack-review → ~/.claude/skills/gstack/review
+
+# 全局安装（链接到 ~/.claude/skills/）
+# 源: /path/to/skills/*    目标: ~/.claude/skills/
+skill-sync mklink /path/to/skills --global
 ```
 
 | 参数/选项 | 默认值 | 说明 |
 |-----------|--------|------|
 | `SOURCE_PATH` | （必填） | 源目录路径，扫描其子文件夹中的技能 |
-| `PROJECT` | `.` | 目标项目目录 |
+| `PROJECT` | `.` | 目标项目目录（决定 `.claude/skills/` 的位置） |
 | `--prefix` | `""` | symlink 名称前缀（如 `gstack-`） |
+| `--global` | `False` | 链接到 `~/.claude/skills/` 而非项目目录 |
 
 > **跳过规则：** 隐藏目录（`.` 开头）、不含 `SKILL.md` 的目录、普通文件会被自动跳过。已存在的同名技能会被覆盖。
+>
+> `--global` 与 `PROJECT` 参数互斥，不能同时指定。
 
 ### `remove` — 移除技能
 

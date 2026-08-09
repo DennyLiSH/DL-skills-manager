@@ -4,7 +4,10 @@ from pathlib import Path
 
 import click
 
-from dl_skills_manager.core.commands._shared import validate_skill_name
+from dl_skills_manager.core.commands._shared import (
+    resolve_skills_target_dir,
+    validate_skill_name,
+)
 from dl_skills_manager.core.linker import create_link
 
 SKILL_MARKER = "SKILL.md"
@@ -13,10 +16,15 @@ SKILL_MARKER = "SKILL.md"
 @click.command()
 @click.argument("source_path", type=click.Path(exists=True, file_okay=False))
 @click.argument("project", default=".", required=False)
+@click.option("--prefix", default="", help="Symlink name prefix (e.g. 'gstack-')")
 @click.option(
-    "--prefix", default="", help="Symlink name prefix (e.g. 'gstack-')"
+    "--global",
+    "is_global",
+    is_flag=True,
+    default=False,
+    help="Link to ~/.claude/skills/ instead of a project.",
 )
-def mklink(source_path: str, project: str, prefix: str) -> None:
+def mklink(source_path: str, project: str, prefix: str, is_global: bool) -> None:
     """Batch symlink skills from SOURCE_PATH to project's .claude/skills/.
 
     Scans SOURCE_PATH for subdirectories containing SKILL.md and creates
@@ -24,11 +32,21 @@ def mklink(source_path: str, project: str, prefix: str) -> None:
     project's .claude/skills/ directory.
 
     Use --prefix to namespace linked skills (e.g. --prefix gstack-).
+    Use --global to link to ~/.claude/skills/ instead.
     """
+    if is_global and project != ".":
+        raise click.UsageError("Cannot specify both --global and a PROJECT path.")
+
     source_dir = Path(source_path).resolve()
-    project_dir = Path(project).resolve()
-    target_dir = project_dir / ".claude" / "skills"
-    target_dir.mkdir(parents=True, exist_ok=True)
+
+    if is_global:
+        target_dir = resolve_skills_target_dir(global_flag=True)
+    else:
+        project_dir = Path(project).resolve()
+        target_dir = resolve_skills_target_dir(
+            global_flag=False,
+            project_path=project_dir,
+        )
 
     linked = 0
     for subdir in sorted(source_dir.iterdir()):

@@ -41,5 +41,6 @@ htmlcov/
 uv.lock
 
 .claude/
+CLAUDE.md
 _*/
 _*
