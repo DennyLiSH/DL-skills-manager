@@ -18,7 +18,7 @@ from dl_skills_manager.core.linker import remove_link
 @click.argument("project", default=".")
 @click.option("--global", "is_global", is_flag=True, default=False,
               help="Remove skill from ~/.claude/skills/ instead of a project.")
-def remove(name: str, project: str, is_global: bool) -> None:
+def remove(name: str, project: str, *, is_global: bool) -> None:
     """Remove an installed skill from the current project.
 
     Removes the symlink/copy.

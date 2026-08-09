@@ -20,7 +20,7 @@ from dl_skills_manager.core.config import load_config
 @click.argument("project", default=".")
 @click.option("--global", "is_global", is_flag=True, default=False,
               help="Update skill in ~/.claude/skills/ instead of a project.")
-def update(name: str, project: str, is_global: bool) -> None:
+def update(name: str, project: str, *, is_global: bool) -> None:
     """Update a skill to the latest stable version.
 
     Re-copies the latest version from the repository. If the skill was

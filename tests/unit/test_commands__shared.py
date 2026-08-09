@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from test_helpers import mock_config
 
 from dl_skills_manager.core.commands._shared import (
     find_skill_dir,
@@ -15,7 +16,6 @@ from dl_skills_manager.core.exceptions import (
     ValidationError,
     VersionNotFoundError,
 )
-from test_helpers import mock_config
 
 
 class TestFindSkillDir:
@@ -124,7 +124,10 @@ class TestResolveSkillsTargetDir:
         """Test global flag resolves to ~/.claude/skills/."""
         fake_home = tmp_path / "home"
         fake_home.mkdir()
-        with patch("dl_skills_manager.core.commands._shared.Path.home", return_value=fake_home):
+        with patch(
+            "dl_skills_manager.core.commands._shared.Path.home",
+            return_value=fake_home,
+        ):
             result = resolve_skills_target_dir(global_flag=True)
 
         assert result == fake_home / ".claude" / "skills"

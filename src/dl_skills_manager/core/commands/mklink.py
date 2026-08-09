@@ -24,7 +24,7 @@ SKILL_MARKER = "SKILL.md"
     default=False,
     help="Link to ~/.claude/skills/ instead of a project.",
 )
-def mklink(source_path: str, project: str, prefix: str, is_global: bool) -> None:
+def mklink(source_path: str, project: str, prefix: str, *, is_global: bool) -> None:
     """Batch symlink skills from SOURCE_PATH to project's .claude/skills/.
 
     Scans SOURCE_PATH for subdirectories containing SKILL.md and creates

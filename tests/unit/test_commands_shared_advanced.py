@@ -84,7 +84,9 @@ class TestInstallSkillCopy:
         target_skills_dir = project_path / ".claude" / "skills"
 
         skill_dir = tmp_path / "repo"
-        result = install_skill_copy(target_skills_dir, "test-skill", skill_dir, version_dir)
+        result = install_skill_copy(
+            target_skills_dir, "test-skill", skill_dir, version_dir
+        )
 
         expected = target_skills_dir / "test-skill"
         assert result == expected
@@ -125,7 +127,9 @@ class TestUpdateSkillCopy:
         (installed / "SKILL.md").write_text("# Old Version\n")
 
         skill_dir = tmp_path / "repo"
-        result = update_skill_copy(target_skills_dir, "test-skill", skill_dir, version_dir)
+        result = update_skill_copy(
+            target_skills_dir, "test-skill", skill_dir, version_dir
+        )
 
         assert (result / "SKILL.md").read_text() == "# New Version\n"
         # Backup should be cleaned up on success
@@ -143,6 +147,8 @@ class TestUpdateSkillCopy:
         target_skills_dir = project_path / ".claude" / "skills"
 
         skill_dir = tmp_path / "repo"
-        result = update_skill_copy(target_skills_dir, "test-skill", skill_dir, version_dir)
+        result = update_skill_copy(
+            target_skills_dir, "test-skill", skill_dir, version_dir
+        )
 
         assert (result / "SKILL.md").read_text() == "# Version\n"

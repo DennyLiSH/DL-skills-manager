@@ -6,10 +6,10 @@ from unittest.mock import patch
 
 import pytest
 import tomli_w
+from test_helpers import mock_config
 
 from dl_skills_manager.cli import main
 from dl_skills_manager.core.commands.list import list_skills
-from test_helpers import mock_config
 
 if TYPE_CHECKING:
     from click.testing import CliRunner

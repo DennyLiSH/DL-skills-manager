@@ -28,7 +28,7 @@ from dl_skills_manager.core.linker import create_link
     default=None,
     help="Override default link mode (symlink or copy) for this installation.",
 )
-def install(name: str, project: str, is_global: bool, link_mode: str | None) -> None:
+def install(name: str, project: str, *, is_global: bool, link_mode: str | None) -> None:
     """Install a skill into the current project.
 
     Creates a symlink or copies the skill to .claude/skills/{skill_name},
