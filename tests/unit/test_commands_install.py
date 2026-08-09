@@ -242,10 +242,14 @@ class TestInstallLinkMode:
         assert skill_path.is_dir()
         assert not skill_path.is_symlink()
 
-    def test_install_symlink_mode_calls_create_link(
+    def test_install_ignores_config_default_link_mode_symlink(
         self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
     ) -> None:
-        """Test symlink mode calls create_link from linker module."""
+        """install must NOT honor config.default_link_mode; copy is always the default.
+
+        Regression guard: the only test preventing install from re-reading
+        config.default_link_mode. Do not delete or weaken.
+        """
         symlink_config = SkillSyncConfig(
             path=repo_with_skill,
             skills_store=repo_with_skill / "data",
@@ -267,7 +271,12 @@ class TestInstallLinkMode:
             )
 
         assert result.exit_code == 0, result.output
-        mock_create_link.assert_called_once()
+        mock_create_link.assert_not_called()
+
+        skill_path = project_dir / ".claude" / "skills" / "test-skill"
+        assert skill_path.exists()
+        assert skill_path.is_dir()
+        assert not skill_path.is_symlink()
 
     def test_install_link_mode_cli_override_to_symlink(
         self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
@@ -318,3 +327,30 @@ class TestInstallLinkMode:
 
         assert result.exit_code == 0, result.output
         mock_install_copy.assert_called_once()
+
+    def test_install_symlink_config_with_cli_symlink_override(
+        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    ) -> None:
+        """--link-mode symlink routes to create_link regardless of config."""
+        symlink_config = SkillSyncConfig(
+            path=repo_with_skill,
+            skills_store=repo_with_skill / "data",
+            default_link_mode="symlink",
+        )
+
+        with (
+            patch(
+                "dl_skills_manager.core.commands.install.load_config",
+                return_value=symlink_config,
+            ),
+            patch(
+                "dl_skills_manager.core.commands.install.create_link",
+            ) as mock_create_link,
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["install", "--link-mode", "symlink", "test-skill", str(project_dir)],
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_create_link.assert_called_once()

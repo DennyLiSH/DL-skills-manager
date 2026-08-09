@@ -40,7 +40,7 @@ def install(name: str, project: str, is_global: bool, link_mode: str | None) -> 
         name: Name of the skill to install (optionally with @version suffix).
         project: Path to the project directory (default: current directory).
         is_global: If True, install to ~/.claude/skills/ globally.
-        link_mode: Override the default link mode from config.
+        link_mode: Override the default link mode (force symlink instead of copy).
     """
     if is_global and project != ".":
         raise click.UsageError("Cannot specify both --global and a PROJECT path.")
@@ -54,7 +54,7 @@ def install(name: str, project: str, is_global: bool, link_mode: str | None) -> 
 
     # Load config and determine effective link mode
     config = load_config()
-    effective_mode = link_mode or config.default_link_mode
+    effective_mode = link_mode or "copy"
 
     # Find skill and version directories with validation
     skill_dir = find_skill_dir(name, config=config)
