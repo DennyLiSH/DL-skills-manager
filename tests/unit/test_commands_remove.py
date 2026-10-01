@@ -1,5 +1,6 @@
 """Tests for remove command."""
 
+import importlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -8,9 +9,19 @@ import pytest
 import tomli_w
 
 from dl_skills_manager.cli import main
+from dl_skills_manager.core.agents import AgentDirOverride
+from dl_skills_manager.core.config import SkillSyncConfig
+from dl_skills_manager.core.exceptions import ConfigError
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
+
+# The package __init__ re-exports the click Command as ``remove``, shadowing
+# the submodule in getattr chains. pytest's dotted-path resolution uses
+# getattr and would patch the Command, not the module — resolve explicitly.
+_REMOVE_MODULE = importlib.import_module(
+    "dl_skills_manager.core.commands.remove"
+)
 
 
 @pytest.fixture
@@ -42,6 +53,28 @@ def project_with_skill(tmp_path: Path) -> Path:
         )
 
     return project
+
+
+@pytest.fixture(autouse=True)
+def _mock_remove_load_config(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Isolate remove from the real ~/.skill-sync/config.toml.
+
+    remove reads config for [agents] overrides (spec D6b). raising=False:
+    remove.load_config only exists after Step 3 adds the import; before
+    that this patch is a harmless no-op.
+    """
+    monkeypatch.setattr(
+        _REMOVE_MODULE,
+        "load_config",
+        lambda: SkillSyncConfig(
+            path=tmp_path / ".skill-sync",
+            skills_store=tmp_path / "store",
+            default_link_mode="copy",
+        ),
+        raising=False,
+    )
 
 
 class TestRemoveCommand:
@@ -138,6 +171,107 @@ class TestRemoveCommand:
 
         assert result.exit_code != 0
         assert "Cannot specify both --global and a PROJECT path" in result.output
+
+    def test_remove_agent_codex_project(
+        self, cli_runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """Remove a skill installed under <project>/.agents/skills/."""
+        project = tmp_path / "proj"
+        project.mkdir()
+        skill_dir = project / ".agents" / "skills" / "test-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# test\n")
+
+        result = cli_runner.invoke(
+            main,
+            ["remove", "--agent", "codex", "test-skill", str(project)],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert not skill_dir.exists()
+
+    def test_remove_unknown_agent_errors(
+        self, cli_runner: CliRunner, tmp_path: Path
+    ) -> None:
+        project = tmp_path / "proj"
+        project.mkdir()
+
+        result = cli_runner.invoke(
+            main,
+            ["remove", "--agent", "nope", "test-skill", str(project)],
+        )
+
+        assert result.exit_code != 0
+        assert "Unknown agent" in result.output
+
+    def test_remove_agent_codex_global(
+        self, cli_runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """Remove a skill installed under ~/.agents/skills/ (--global)."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        skill_dir = fake_home / ".agents" / "skills" / "test-skill"
+        skill_dir.mkdir(parents=True)
+
+        with patch(
+            "dl_skills_manager.core.commands._shared.Path.home",
+            return_value=fake_home,
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["remove", "--global", "--agent", "codex", "test-skill"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert not skill_dir.exists()
+
+    def test_remove_requires_initialized_repo(
+        self, cli_runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """Behavior change (spec D6b): uninitialized repo → clear error."""
+        project = tmp_path / "proj"
+        project.mkdir()
+
+        def _raise() -> SkillSyncConfig:
+            raise ConfigError("Config file not found: ~/.skill-sync/config.toml")
+
+        monkeypatch.setattr(_REMOVE_MODULE, "load_config", _raise)
+        result = cli_runner.invoke(
+            main,
+            ["remove", "test-skill", str(project)],
+        )
+
+        assert result.exit_code != 0
+        assert "Config file not found" in result.output
+
+    def test_remove_agent_uses_config_override(
+        self, cli_runner: CliRunner, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """[agents] override redirects remove target too."""
+        monkeypatch.setattr(
+            _REMOVE_MODULE,
+            "load_config",
+            lambda: SkillSyncConfig(
+                path=tmp_path / ".skill-sync",
+                skills_store=tmp_path / "store",
+                default_link_mode="copy",
+                agent_dirs={
+                    "codex": AgentDirOverride(project_dir=".codex/skills")
+                },
+            ),
+        )
+        project = tmp_path / "proj"
+        project.mkdir()
+        skill_dir = project / ".codex" / "skills" / "test-skill"
+        skill_dir.mkdir(parents=True)
+
+        result = cli_runner.invoke(
+            main,
+            ["remove", "--agent", "codex", "test-skill", str(project)],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert not skill_dir.exists()
 
 
 class TestRemoveSymlink:

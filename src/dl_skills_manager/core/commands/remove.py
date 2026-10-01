@@ -10,6 +10,7 @@ from dl_skills_manager.core.commands._shared import (
     resolve_skills_target_dir,
     validate_skill_name,
 )
+from dl_skills_manager.core.config import load_config
 from dl_skills_manager.core.linker import remove_link
 
 
@@ -18,7 +19,13 @@ from dl_skills_manager.core.linker import remove_link
 @click.argument("project", default=".")
 @click.option("--global", "is_global", is_flag=True, default=False,
               help="Remove skill from ~/.claude/skills/ instead of a project.")
-def remove(name: str, project: str, *, is_global: bool) -> None:
+@click.option(
+    "--agent",
+    default="claude",
+    show_default=True,
+    help="Target agent dir (claude/codex/pi/zcode/workbuddy or [agents]).",
+)
+def remove(name: str, project: str, *, is_global: bool, agent: str) -> None:
     """Remove an installed skill from the current project.
 
     Removes the symlink/copy.
@@ -28,13 +35,21 @@ def remove(name: str, project: str, *, is_global: bool) -> None:
 
     validate_skill_name(name)
 
+    # Load config: [agents] overrides affect target dir resolution (D6b)
+    config = load_config()
+
     # Resolve target skills directory
     if is_global:
-        target_skills_dir = resolve_skills_target_dir(global_flag=True)
+        target_skills_dir = resolve_skills_target_dir(
+            global_flag=True, agent=agent, agent_overrides=config.agent_dirs
+        )
     else:
         project_path = Path(project).resolve()
         target_skills_dir = resolve_skills_target_dir(
-            global_flag=False, project_path=project_path,
+            global_flag=False,
+            project_path=project_path,
+            agent=agent,
+            agent_overrides=config.agent_dirs,
         )
 
     # Remove symlink/copy
