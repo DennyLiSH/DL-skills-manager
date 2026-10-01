@@ -10,6 +10,7 @@ __all__ = [
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 
 from dl_skills_manager.core.exceptions import ValidationError
 
@@ -36,13 +37,15 @@ class AgentDirOverride:
     project_dir: str | None = None
 
 
-BUILTIN_AGENTS: dict[str, AgentSpec] = {
-    "claude": AgentSpec(global_dir=".claude/skills", project_dir=".claude/skills"),
-    "codex": AgentSpec(global_dir=".agents/skills", project_dir=".agents/skills"),
-    "pi": AgentSpec(global_dir=".pi/agent/skills", project_dir=".pi/skills"),
-    "zcode": AgentSpec(global_dir=".zcode/skills", project_dir=".zcode/skills"),
-    "workbuddy": AgentSpec(global_dir=".workbuddy/skills", project_dir=None),
-}
+BUILTIN_AGENTS: Mapping[str, AgentSpec] = MappingProxyType(
+    {
+        "claude": AgentSpec(global_dir=".claude/skills", project_dir=".claude/skills"),
+        "codex": AgentSpec(global_dir=".agents/skills", project_dir=".agents/skills"),
+        "pi": AgentSpec(global_dir=".pi/agent/skills", project_dir=".pi/skills"),
+        "zcode": AgentSpec(global_dir=".zcode/skills", project_dir=".zcode/skills"),
+        "workbuddy": AgentSpec(global_dir=".workbuddy/skills", project_dir=None),
+    }
+)
 
 
 def _normalize_project_dir(value: str) -> str:

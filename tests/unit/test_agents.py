@@ -5,6 +5,7 @@ import pytest
 from dl_skills_manager.core.agents import (
     BUILTIN_AGENTS,
     AgentDirOverride,
+    AgentSpec,
     resolve_agent_dirs,
 )
 from dl_skills_manager.core.exceptions import ValidationError
@@ -40,6 +41,22 @@ class TestBuiltinAgents:
         spec = BUILTIN_AGENTS["workbuddy"]
         assert spec.global_dir == ".workbuddy/skills"
         assert spec.project_dir is None
+
+
+class TestBuiltinAgentsImmutable:
+    """BUILTIN_AGENTS is a read-only mapping (MappingProxyType)."""
+
+    def test_item_assignment_and_deletion_raise(self) -> None:
+        with pytest.raises(TypeError):
+            BUILTIN_AGENTS["new-agent"] = AgentSpec(
+                global_dir="~/.new/skills", project_dir=None
+            )
+        with pytest.raises(TypeError):
+            del BUILTIN_AGENTS["claude"]
+
+    def test_snapshot_via_dict_copy_still_possible(self) -> None:
+        snapshot = dict(BUILTIN_AGENTS)
+        assert snapshot["claude"].global_dir == ".claude/skills"
 
 
 class TestResolveAgentDirs:
