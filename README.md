@@ -23,6 +23,36 @@ skill-sync init
 skill-sync list
 ```
 
+## Agents
+
+`install` / `update` / `remove` / `mklink` 均支持 `--agent <name>`（默认 `claude`）：
+
+| Agent | 全局目录 | 项目级目录 |
+|---|---|---|
+| `claude` | `~/.claude/skills/` | `{project}/.claude/skills/` |
+| `codex` | `~/.agents/skills/` | `{project}/.agents/skills/` |
+| `pi` | `~/.pi/agent/skills/` | `{project}/.pi/skills/` |
+| `zcode` | `~/.zcode/skills/` | `{project}/.zcode/skills/` |
+| `workbuddy` | `~/.workbuddy/skills/` | 不支持（仅 `--global`） |
+
+说明：
+
+- `codex` 指向 `.agents/skills`（Agent Skills 开放标准，Pi 等兼容工具同样读取该目录）
+- 各工具目录依据调研实证（2026-10），工具升级可能改变路径——用 `config.toml` 覆盖：
+
+```toml
+[agents.codex]
+global_dir = "~/.codex/skills"    # 覆盖全局目录（可选）
+project_dir = ".codex/skills"     # 覆盖项目级相对路径（可选）
+
+[agents.mytool]                   # 亦可新增自定义 agent
+global_dir = "~/.mytool/skills"
+project_dir = ".mytool/skills"
+```
+
+- `[agents]` 覆盖对 `install` / `update` / `remove` 生效；`mklink` 保持无仓库依赖，仅使用内置注册表
+- `remove` 自 0.5.0 起读取配置（解析与 install 相同的目标目录），因此要求仓库已初始化
+
 ## Commands
 
 ### `init` — 初始化仓库
@@ -59,6 +89,12 @@ skill-sync install <skill-name> --global
 
 # 覆盖 link mode
 skill-sync install <skill-name> --link-mode symlink
+
+# 安装到指定 agent 的全局目录（codex → ~/.agents/skills/）
+skill-sync install <name> --agent codex --global --link-mode symlink
+
+# 安装到项目级 agent 目录（pi → <project>/.pi/skills/）
+skill-sync install <name> --agent pi <project-path>
 ```
 
 | 参数/选项 | 默认值 | 说明 |
@@ -81,6 +117,9 @@ skill-sync update <skill-name> <project-path>
 
 # 更新全局技能
 skill-sync update <skill-name> --global
+
+# 更新指定 agent 目录下的技能
+skill-sync update <name> --agent codex --global
 ```
 
 | 参数/选项 | 默认值 | 说明 |
@@ -112,6 +151,9 @@ skill-sync mklink ~/.claude/skills/gstack --prefix gstack- .
 # 全局安装（链接到 ~/.claude/skills/）
 # 源: /path/to/skills/*    目标: ~/.claude/skills/
 skill-sync mklink /path/to/skills --global
+
+# 批量链接到其他 agent 目录（仅内置注册表，不读 [agents] 配置）
+skill-sync mklink <source-path> --agent codex <project-path>
 ```
 
 | 参数/选项 | 默认值 | 说明 |
@@ -138,6 +180,9 @@ skill-sync remove <skill-name> <project-path>
 
 # 从全局目录移除
 skill-sync remove <skill-name> --global
+
+# 移除指定 agent 目录下的技能
+skill-sync remove <name> --agent codex --global
 ```
 
 | 参数/选项 | 默认值 | 说明 |
