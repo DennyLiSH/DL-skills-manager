@@ -75,6 +75,21 @@ class TestResolveAgentDirs:
         result = resolve_agent_dirs("codex", overrides)
         assert result == (".agents/skills", ".codex/skills")
 
+    def test_override_replaces_both_dirs_on_builtin(self) -> None:
+        overrides = {
+            "claude": AgentDirOverride(
+                global_dir="~/.claude2/skills", project_dir=".claude2/skills"
+            )
+        }
+        assert resolve_agent_dirs("claude", overrides) == (
+            "~/.claude2/skills",
+            ".claude2/skills",
+        )
+
+    def test_global_dir_posix_absolute_allowed(self) -> None:
+        overrides = {"mytool": AgentDirOverride(global_dir="/opt/mytool/skills")}
+        assert resolve_agent_dirs("mytool", overrides) == ("/opt/mytool/skills", None)
+
     def test_custom_agent_both_dirs(self) -> None:
         overrides = {
             "mytool": AgentDirOverride(
