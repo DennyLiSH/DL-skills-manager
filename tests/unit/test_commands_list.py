@@ -60,35 +60,13 @@ class TestListSkills:
         config_dir.mkdir()
         data_dir = config_dir / "data"
         data_dir.mkdir()
-        config_path = config_dir / "config.toml"
-        with config_path.open("wb") as f:
-            tomli_w.dump(
-                {
-                    "basic": {
-                        "path": str(config_dir),
-                        "skills_store": str(data_dir),
-                    },
-                    "settings": {"default_link_mode": "copy"},
-                },
-                f,
-            )
 
-        mock_cfg = mock_config(config_dir)
-        with patch(
-            "dl_skills_manager.core.commands.list.load_config",
-            return_value=mock_cfg,
-        ):
-            skills = list_skills()
+        skills = list_skills(mock_config(config_dir))
         assert skills == []
 
     def test_list_skills_with_skills(self, initialized_repo: Path) -> None:
         """Test list_skills returns skills info."""
-        mock_cfg = mock_config(initialized_repo)
-        with patch(
-            "dl_skills_manager.core.commands.list.load_config",
-            return_value=mock_cfg,
-        ):
-            skills = list_skills()
+        skills = list_skills(mock_config(initialized_repo))
         assert len(skills) == 1
         assert skills[0].name == "test-skill"
         assert skills[0].history == ("v2026.03.22",)

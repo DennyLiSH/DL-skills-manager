@@ -4,17 +4,21 @@ __all__ = ["list_skills", "list_skills_cmd"]
 
 import click
 
-from dl_skills_manager.core.config import load_config
+from dl_skills_manager.core.config import SkillSyncConfig, load_config
 from dl_skills_manager.core.types import SkillInfo
 
 
-def list_skills() -> list[SkillInfo]:
+def list_skills(config: SkillSyncConfig | None = None) -> list[SkillInfo]:
     """List all skills in the repository.
+
+    Args:
+        config: Pre-loaded config; loads from disk when omitted.
 
     Returns:
         List of skill information objects.
     """
-    config = load_config()
+    if config is None:
+        config = load_config()
     skills_store = config.skills_store
     if not skills_store.exists():
         return []
@@ -68,7 +72,7 @@ def list_skills_cmd() -> None:
     config = load_config()
     skills_path = config.skills_store
 
-    skills = list_skills()
+    skills = list_skills(config)
 
     if not skills:
         click.echo(f"No skills found in {skills_path}.")
