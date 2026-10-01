@@ -18,6 +18,7 @@ from typing import cast, overload
 
 import tomli_w
 
+from dl_skills_manager.core.agents import AgentDirOverride, resolve_agent_dirs
 from dl_skills_manager.core.config import SkillSyncConfig, load_config
 from dl_skills_manager.core.exceptions import (
     LinkError,
@@ -203,26 +204,53 @@ def atomic_write_toml(path: Path, data: Mapping[str, object] | object) -> None:
 
 
 def resolve_skills_target_dir(
-    *, global_flag: bool, project_path: Path | None = None
+    *,
+    global_flag: bool,
+    project_path: Path | None = None,
+    agent: str = "claude",
+    agent_overrides: Mapping[str, AgentDirOverride] | None = None,
 ) -> Path:
     """Resolve the target directory for skill installation.
 
     Args:
-        global_flag: If True, resolve to ~/.claude/skills/.
+        global_flag: If True, resolve to the agent's global skills dir.
         project_path: Project path (required when global_flag is False).
+        agent: Agent name (default "claude" for backward compatibility).
+        agent_overrides: Config [agents] table, or None for builtin-only.
 
     Returns:
         Resolved target skills directory path.
 
     Raises:
-        ValidationError: If global_flag is False and project_path is None.
+        ValidationError: If agent is unknown, project_path is missing,
+            or the agent does not support the requested scope.
     """
+    global_dir, project_dir = resolve_agent_dirs(agent, agent_overrides)
+
     if global_flag:
-        target = Path.home() / ".claude" / "skills"
+        if global_dir is None:
+            raise ValidationError(
+                f"agent '{agent}' does not define a global skills directory"
+            )
+        # Resolve "~"-prefixed values through Path.home() instead of
+        # expanduser(): expanduser() reads the USERPROFILE env var and
+        # bypasses the Path.home seam that tests patch. Path.home() must
+        # stay in this function for the same reason.
+        if global_dir.startswith("~"):
+            rel = global_dir[1:].lstrip("/\\")
+            target = Path.home() / rel
+        else:
+            candidate = Path(global_dir)
+            target = candidate if candidate.is_absolute() else Path.home() / candidate
     else:
         if project_path is None:
             raise ValidationError("project_path required for local installation")
-        target = project_path / ".claude" / "skills"
+        if project_dir is None:
+            raise ValidationError(
+                f"agent '{agent}' does not support project-level installation; "
+                f"use --global"
+            )
+        target = project_path / project_dir
 
     target.mkdir(parents=True, exist_ok=True)
     return target

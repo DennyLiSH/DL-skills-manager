@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 from test_helpers import mock_config
 
+from dl_skills_manager.core.agents import AgentDirOverride
 from dl_skills_manager.core.commands._shared import (
     find_skill_dir,
     find_version_dir,
@@ -157,3 +158,103 @@ class TestResolveSkillsTargetDir:
         result = resolve_skills_target_dir(global_flag=False, project_path=project)
 
         assert result.exists()
+
+
+class TestResolveSkillsTargetDirAgent:
+    """Tests for agent-aware target directory resolution."""
+
+    def test_agent_global(self, tmp_path: Path) -> None:
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        with patch(
+            "dl_skills_manager.core.commands._shared.Path.home",
+            return_value=fake_home,
+        ):
+            result = resolve_skills_target_dir(global_flag=True, agent="codex")
+        assert result == fake_home / ".agents" / "skills"
+        assert result.is_dir()
+
+    def test_agent_global_tilde_override(self, tmp_path: Path) -> None:
+        """'~'-prefixed override must resolve via the patched Path.home seam.
+
+        expanduser() reads USERPROFILE and would bypass the seam (and write
+        to the real home) — this test pins the corrected behavior.
+        """
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        with patch(
+            "dl_skills_manager.core.commands._shared.Path.home",
+            return_value=fake_home,
+        ):
+            result = resolve_skills_target_dir(
+                global_flag=True,
+                agent="codex",
+                agent_overrides={
+                    "codex": AgentDirOverride(global_dir="~/.codex/skills")
+                },
+            )
+        assert result == fake_home / ".codex" / "skills"
+        assert result.is_dir()
+
+    def test_agent_global_absolute_path_override(self, tmp_path: Path) -> None:
+        """Non-'~' absolute override is used as-is (no home involved)."""
+        abs_dir = tmp_path / "custom-abs" / "skills"
+        result = resolve_skills_target_dir(
+            global_flag=True,
+            agent="codex",
+            agent_overrides={"codex": AgentDirOverride(global_dir=str(abs_dir))},
+        )
+        assert result == abs_dir
+        assert result.is_dir()
+
+    def test_agent_project(self, tmp_path: Path) -> None:
+        project = tmp_path / "proj"
+        project.mkdir()
+        result = resolve_skills_target_dir(
+            global_flag=False, project_path=project, agent="pi"
+        )
+        assert result == project / ".pi" / "skills"
+        assert result.is_dir()
+
+    def test_default_agent_is_claude(self, tmp_path: Path) -> None:
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        with patch(
+            "dl_skills_manager.core.commands._shared.Path.home",
+            return_value=fake_home,
+        ):
+            result = resolve_skills_target_dir(global_flag=True)
+        assert result == fake_home / ".claude" / "skills"
+
+    def test_workbuddy_project_raises(self, tmp_path: Path) -> None:
+        project = tmp_path / "proj"
+        project.mkdir()
+        with pytest.raises(ValidationError, match="--global"):
+            resolve_skills_target_dir(
+                global_flag=False, project_path=project, agent="workbuddy"
+            )
+
+    def test_unknown_agent_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(ValidationError, match="Unknown agent"):
+            resolve_skills_target_dir(global_flag=True, agent="nope")
+
+    def test_custom_agent_global_only_project_raises(self, tmp_path: Path) -> None:
+        project = tmp_path / "proj"
+        project.mkdir()
+        with pytest.raises(ValidationError, match="does not support"):
+            resolve_skills_target_dir(
+                global_flag=False,
+                project_path=project,
+                agent="mytool",
+                agent_overrides={"mytool": AgentDirOverride(global_dir="~/.m/s")},
+            )
+
+    def test_custom_agent_project_only_global_raises(self) -> None:
+        with pytest.raises(ValidationError, match="does not define a global"):
+            resolve_skills_target_dir(
+                global_flag=True,
+                agent="mytool",
+                agent_overrides={
+                    "mytool": AgentDirOverride(project_dir=".mytool/skills")
+                },
+            )
