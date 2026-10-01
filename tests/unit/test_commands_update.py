@@ -9,6 +9,7 @@ import tomli_w
 from test_helpers import mock_config
 
 from dl_skills_manager.cli import main
+from dl_skills_manager.core.agents import AgentDirOverride
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
@@ -159,6 +160,128 @@ class TestUpdateCommand:
 
         assert result.exit_code != 0
         assert "Cannot specify both --global and a PROJECT path" in result.output
+
+    def test_update_agent_codex_symlink_skip(
+        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+    ) -> None:
+        """Symlink install under --agent codex: update reports skip."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        config = mock_config(repo_with_skill)
+
+        with (
+            patch(
+                "dl_skills_manager.core.commands.install.load_config",
+                return_value=config,
+            ),
+            patch(
+                "dl_skills_manager.core.commands.update.load_config",
+                return_value=config,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.Path.home",
+                return_value=fake_home,
+            ),
+        ):
+            install_result = cli_runner.invoke(
+                main,
+                [
+                    "install",
+                    "--global",
+                    "--agent",
+                    "codex",
+                    "--link-mode",
+                    "symlink",
+                    "test-skill",
+                ],
+            )
+            update_result = cli_runner.invoke(
+                main,
+                ["update", "--global", "--agent", "codex", "test-skill"],
+            )
+
+        assert install_result.exit_code == 0, install_result.output
+        assert update_result.exit_code == 0, update_result.output
+        output = update_result.output.lower()
+        # Windows without symlink privilege falls back to copy (then update
+        # re-copies) — accept either branch, both prove agent dir resolution.
+        assert "symlink" in output or "updated" in output
+
+    def test_update_workbuddy_project_errors(
+        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    ) -> None:
+        config = mock_config(repo_with_skill)
+
+        with patch(
+            "dl_skills_manager.core.commands.update.load_config",
+            return_value=config,
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["update", "--agent", "workbuddy", "test-skill", str(project_dir)],
+            )
+
+        assert result.exit_code != 0
+        assert "--global" in result.output
+
+    def test_update_agent_uses_config_override(
+        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+    ) -> None:
+        """[agents] override redirects the update target dir too."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        config = mock_config(repo_with_skill)
+        config.agent_dirs = {
+            "codex": AgentDirOverride(global_dir="~/.codex/skills")
+        }
+
+        with (
+            patch(
+                "dl_skills_manager.core.commands.install.load_config",
+                return_value=config,
+            ),
+            patch(
+                "dl_skills_manager.core.commands.update.load_config",
+                return_value=config,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.Path.home",
+                return_value=fake_home,
+            ),
+        ):
+            install_result = cli_runner.invoke(
+                main,
+                ["install", "--global", "--agent", "codex", "test-skill"],
+            )
+            update_result = cli_runner.invoke(
+                main,
+                ["update", "--global", "--agent", "codex", "test-skill"],
+            )
+
+        assert install_result.exit_code == 0, install_result.output
+        assert (fake_home / ".codex" / "skills" / "test-skill").exists()
+        assert update_result.exit_code == 0, update_result.output
+
+    def test_update_agent_pi_project(
+        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    ) -> None:
+        """Project-level update under --agent pi re-copies the latest."""
+        config = mock_config(repo_with_skill)
+        skill_dir = project_dir / ".pi" / "skills" / "test-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# old\n")
+
+        with patch(
+            "dl_skills_manager.core.commands.update.load_config",
+            return_value=config,
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["update", "--agent", "pi", "test-skill", str(project_dir)],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "Updated test-skill" in result.output
 
 
 class TestUpdateSymlinkSkip:

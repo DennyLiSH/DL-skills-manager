@@ -20,7 +20,13 @@ from dl_skills_manager.core.config import load_config
 @click.argument("project", default=".")
 @click.option("--global", "is_global", is_flag=True, default=False,
               help="Update skill in ~/.claude/skills/ instead of a project.")
-def update(name: str, project: str, *, is_global: bool) -> None:
+@click.option(
+    "--agent",
+    default="claude",
+    show_default=True,
+    help="Target agent dir (claude/codex/pi/zcode/workbuddy or [agents]).",
+)
+def update(name: str, project: str, *, is_global: bool, agent: str) -> None:
     """Update a skill to the latest stable version.
 
     Re-copies the latest version from the repository. If the skill was
@@ -30,17 +36,24 @@ def update(name: str, project: str, *, is_global: bool) -> None:
     if is_global and project != ".":
         raise click.UsageError("Cannot specify both --global and a PROJECT path.")
 
+    # Load config first: [agents] overrides affect target dir resolution
+    config = load_config()
+
     # Resolve target skills directory
     if is_global:
-        target_skills_dir = resolve_skills_target_dir(global_flag=True)
+        target_skills_dir = resolve_skills_target_dir(
+            global_flag=True, agent=agent, agent_overrides=config.agent_dirs
+        )
     else:
         project_path = Path(project).resolve()
         target_skills_dir = resolve_skills_target_dir(
-            global_flag=False, project_path=project_path,
+            global_flag=False,
+            project_path=project_path,
+            agent=agent,
+            agent_overrides=config.agent_dirs,
         )
 
     # Find skill and version directories (update always uses stable/latest)
-    config = load_config()
     skill_dir = find_skill_dir(name, config=config)
     version_dir = find_version_dir(skill_dir, version=None)
 
