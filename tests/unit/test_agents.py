@@ -145,3 +145,56 @@ class TestResolveAgentDirs:
         overrides = {"mytool": AgentDirOverride(global_dir="~/../escape")}
         with pytest.raises(ValidationError, match="global_dir"):
             resolve_agent_dirs("mytool", overrides)
+
+
+class TestGlobalDirHardening:
+    """Hardening cases for global_dir values (20261001 code review)."""
+
+    def test_global_dir_bare_tilde_slash_rejected(self) -> None:
+        overrides = {"mytool": AgentDirOverride(global_dir="~/")}
+        with pytest.raises(
+            ValidationError, match="path under the home directory"
+        ):
+            resolve_agent_dirs("mytool", overrides)
+
+    def test_global_dir_tilde_slashes_only_rejected(self) -> None:
+        overrides = {"mytool": AgentDirOverride(global_dir="~//")}
+        with pytest.raises(
+            ValidationError, match="path under the home directory"
+        ):
+            resolve_agent_dirs("mytool", overrides)
+
+    def test_global_dir_surrounding_whitespace_rejected(self) -> None:
+        overrides = {"mytool": AgentDirOverride(global_dir=" ~/mytool/skills")}
+        with pytest.raises(ValidationError, match="whitespace"):
+            resolve_agent_dirs("mytool", overrides)
+        overrides = {"mytool": AgentDirOverride(global_dir="~/ ")}
+        with pytest.raises(ValidationError, match="whitespace"):
+            resolve_agent_dirs("mytool", overrides)
+
+    def test_global_dir_tilde_backslash_normalized(self) -> None:
+        overrides = {"mytool": AgentDirOverride(global_dir="~\\.mytool\\skills")}
+        assert resolve_agent_dirs("mytool", overrides) == ("~/.mytool/skills", None)
+
+    def test_global_dir_relative_backslash_normalized(self) -> None:
+        overrides = {"mytool": AgentDirOverride(global_dir="mytool\\skills")}
+        assert resolve_agent_dirs("mytool", overrides) == ("mytool/skills", None)
+
+    def test_global_dir_tilde_drive_segment_rejected(self) -> None:
+        """'~/d:secret' / '~/c:..' reset Path.home() joins on Windows."""
+        for bad in ("~/d:secret", "~/c:.."):
+            overrides = {"mytool": AgentDirOverride(global_dir=bad)}
+            with pytest.raises(ValidationError, match="':'"):
+                resolve_agent_dirs("mytool", overrides)
+
+    def test_global_dir_colon_segment_rejected(self) -> None:
+        overrides = {"mytool": AgentDirOverride(global_dir="mytool/sk:ills")}
+        with pytest.raises(ValidationError, match="':'"):
+            resolve_agent_dirs("mytool", overrides)
+
+    def test_global_dir_dot_segment_rejected(self) -> None:
+        """'~/.' / '.' resolve to the home root — same effect as bare '~/'."""
+        for bad in ("~/.", "~/foo/.", "."):
+            overrides = {"mytool": AgentDirOverride(global_dir=bad)}
+            with pytest.raises(ValidationError, match="must not contain"):
+                resolve_agent_dirs("mytool", overrides)

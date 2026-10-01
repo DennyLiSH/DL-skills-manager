@@ -57,33 +57,61 @@ def _validate_project_dir(value: str) -> None:
         )
 
 
-def _validate_global_dir(value: str) -> None:
+def _normalize_global_dir(value: str) -> str:
+    """Validate a global_dir value and return its POSIX-style form."""
     if not value.strip():
         raise ValidationError("agents global_dir must not be empty")
+    if value != value.strip():
+        raise ValidationError(
+            f"agents global_dir values must not have leading/trailing "
+            f"whitespace (got {value!r})"
+        )
+    value = value.replace("\\", "/")
     if value.startswith("~"):
         # Reject bare "~" and "~name" forms: only "~/" is well-defined here
-        # (expanduser semantics for "~name" are not wanted — see Task 3).
+        # (expanduser semantics for "~name" are not wanted).
         if not value.startswith("~/"):
             raise ValidationError(
                 f"agents global_dir '~' values must start with '~/' (got {value!r})"
             )
-        rel_parts = value[2:].replace("\\", "/").split("/")
-        if ".." in rel_parts:
+        rel = value[2:].strip("/")
+        if not rel:
             raise ValidationError(
-                f"agents global_dir values must not contain '..' (got {value!r})"
+                f"agents global_dir '~/' values must include a path under "
+                f"the home directory (got {value!r})"
             )
-        return
-    normalized = value.replace("\\", "/")
-    has_drive = len(normalized) >= 2 and normalized[1] == ":"
+        parts = rel.split("/")
+        if "." in parts or ".." in parts:
+            # Bare "." segments ("~/." ) resolve to the home root — the same
+            # effect as a bare "~/" that this hardening rejects.
+            raise ValidationError(
+                f"agents global_dir values must not contain '.' or '..' "
+                f"(got {value!r})"
+            )
+        if any(":" in part for part in parts):
+            # A drive-bearing segment ("~/d:secret", "~/c:..") resets
+            # Path.home() joins on Windows and escapes the home boundary.
+            raise ValidationError(
+                f"agents global_dir values must not contain ':' (got {value!r})"
+            )
+        return "~/" + rel
+    has_drive = len(value) >= 2 and value[1] == ":"
     candidate = Path(value)
     if has_drive and not candidate.is_absolute():
         raise ValidationError(
             f"agents global_dir drive-relative values are not allowed (got {value!r})"
         )
-    if not candidate.is_absolute() and ".." in normalized.split("/"):
+    parts = value.split("/")
+    if any(":" in part for i, part in enumerate(parts) if not (i == 0 and has_drive)):
         raise ValidationError(
-            f"agents global_dir relative values must not contain '..' (got {value!r})"
+            f"agents global_dir values must not contain ':' (got {value!r})"
         )
+    if not candidate.is_absolute() and (".." in parts or "." in parts):
+        raise ValidationError(
+            f"agents global_dir relative values must not contain '.' or '..' "
+            f"(got {value!r})"
+        )
+    return value
 
 
 def resolve_agent_dirs(
@@ -133,6 +161,6 @@ def resolve_agent_dirs(
     if project_dir is not None:
         _validate_project_dir(project_dir)
     if global_dir is not None:
-        _validate_global_dir(global_dir)
+        global_dir = _normalize_global_dir(global_dir)
 
     return global_dir, project_dir
