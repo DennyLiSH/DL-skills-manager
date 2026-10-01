@@ -169,16 +169,12 @@ class TestGlobalDirHardening:
 
     def test_global_dir_bare_tilde_slash_rejected(self) -> None:
         overrides = {"mytool": AgentDirOverride(global_dir="~/")}
-        with pytest.raises(
-            ValidationError, match="path under the home directory"
-        ):
+        with pytest.raises(ValidationError, match="path under the home directory"):
             resolve_agent_dirs("mytool", overrides)
 
     def test_global_dir_tilde_slashes_only_rejected(self) -> None:
         overrides = {"mytool": AgentDirOverride(global_dir="~//")}
-        with pytest.raises(
-            ValidationError, match="path under the home directory"
-        ):
+        with pytest.raises(ValidationError, match="path under the home directory"):
             resolve_agent_dirs("mytool", overrides)
 
     def test_global_dir_surrounding_whitespace_rejected(self) -> None:

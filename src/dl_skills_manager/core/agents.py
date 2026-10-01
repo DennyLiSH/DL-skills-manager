@@ -60,12 +60,7 @@ def _normalize_project_dir(value: str) -> str:
     normalized = value.replace("\\", "/")
     parts = normalized.split("/")
     has_drive = len(normalized) >= 2 and normalized[1] == ":"
-    if (
-        normalized.startswith(("/", "~"))
-        or has_drive
-        or ".." in parts
-        or "." in parts
-    ):
+    if normalized.startswith(("/", "~")) or has_drive or ".." in parts or "." in parts:
         raise ValidationError(
             f"agents project_dir must be a relative path without '.' or '..' "
             f"(got {value!r})"
@@ -105,8 +100,7 @@ def _normalize_global_dir(value: str) -> str:
             # Bare "." segments ("~/." ) resolve to the home root — the same
             # effect as a bare "~/" that this hardening rejects.
             raise ValidationError(
-                f"agents global_dir values must not contain '.' or '..' "
-                f"(got {value!r})"
+                f"agents global_dir values must not contain '.' or '..' (got {value!r})"
             )
         if any(":" in part for part in parts):
             # A drive-bearing segment ("~/d:secret", "~/c:..") resets
