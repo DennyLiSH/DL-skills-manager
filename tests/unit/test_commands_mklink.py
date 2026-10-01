@@ -311,3 +311,41 @@ class TestMklinkCommand:
         assert result.exit_code == 0, result.output
         assert (fake_home / ".agents" / "skills" / "skill-a").exists()
         assert not (fake_home / ".codex" / "skills").exists()
+
+    def test_mklink_ignores_agents_config_project(
+        self,
+        cli_runner: CliRunner,
+        source_dir: Path,
+        project_dir: Path,
+        tmp_path: Path,
+    ) -> None:
+        """D6 guard, project branch: [agents] project_dir overrides are ignored.
+
+        A real config.toml with a codex project_dir override exists and the
+        config lookup is pointed at it — if mklink ever wires agent_overrides
+        into the project branch, links would land in .codex-override/ and the
+        reverse assertion below would trip.
+        """
+        repo_path = tmp_path / ".skill-sync"
+        repo_path.mkdir()
+        (repo_path / "config.toml").write_text(
+            "[basic]\n"
+            "path = 'x'\n"
+            "skills_store = 'x'\n"
+            "\n"
+            "[agents.codex]\n"
+            "project_dir = '.codex-override/skills'\n"
+        )
+
+        with patch(
+            "dl_skills_manager.core.config.get_default_repo_path",
+            return_value=repo_path,
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["mklink", "--agent", "codex", str(source_dir), str(project_dir)],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert (project_dir / ".agents" / "skills" / "skill-a").exists()
+        assert not (project_dir / ".codex-override").exists()
