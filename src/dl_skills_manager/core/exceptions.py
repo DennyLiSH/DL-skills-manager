@@ -5,9 +5,6 @@ __all__ = [
     "ConfigError",
     "LinkError",
     "RepoAlreadyExistsError",
-    "RepoNotInitializedError",
-    "SkillAlreadyExistsError",
-    "SkillAlreadyInstalledError",
     "SkillNotFoundError",
     "ValidationError",
     "VersionNotFoundError",
@@ -33,18 +30,6 @@ class SkillNotFoundError(AppError):
 
 class VersionNotFoundError(AppError):
     """Requested version does not exist."""
-
-
-class SkillAlreadyInstalledError(AppError):
-    """Skill is already installed in project."""
-
-
-class SkillAlreadyExistsError(AppError):
-    """Skill already exists in repository."""
-
-
-class RepoNotInitializedError(AppError):
-    """Repository is not initialized."""
 
 
 class RepoAlreadyExistsError(AppError):
