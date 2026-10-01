@@ -19,9 +19,7 @@ if TYPE_CHECKING:
 # The package __init__ re-exports the click Command as ``remove``, shadowing
 # the submodule in getattr chains. pytest's dotted-path resolution uses
 # getattr and would patch the Command, not the module — resolve explicitly.
-_REMOVE_MODULE = importlib.import_module(
-    "dl_skills_manager.core.commands.remove"
-)
+_REMOVE_MODULE = importlib.import_module("dl_skills_manager.core.commands.remove")
 
 
 @pytest.fixture
@@ -56,9 +54,7 @@ def project_with_skill(tmp_path: Path) -> Path:
 
 
 @pytest.fixture(autouse=True)
-def _mock_remove_load_config(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def _mock_remove_load_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Isolate remove from the real ~/.skill-sync/config.toml.
 
     remove reads config for [agents] overrides (spec D6b). raising=False:
@@ -118,9 +114,7 @@ class TestRemoveCommand:
 
         assert result.exit_code != 0
 
-    def test_remove_global(
-        self, cli_runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_remove_global(self, cli_runner: CliRunner, tmp_path: Path) -> None:
         """Test removing a skill from global ~/.claude/skills/."""
         fake_home = tmp_path / "home"
         fake_home.mkdir()
@@ -255,9 +249,7 @@ class TestRemoveCommand:
                 path=tmp_path / ".skill-sync",
                 skills_store=tmp_path / "store",
                 default_link_mode="copy",
-                agent_dirs={
-                    "codex": AgentDirOverride(project_dir=".codex/skills")
-                },
+                agent_dirs={"codex": AgentDirOverride(project_dir=".codex/skills")},
             ),
         )
         project = tmp_path / "proj"

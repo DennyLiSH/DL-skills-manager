@@ -18,8 +18,13 @@ from dl_skills_manager.core.config import load_config
 @click.command()
 @click.argument("name")
 @click.argument("project", default=".")
-@click.option("--global", "is_global", is_flag=True, default=False,
-              help="Update skill in ~/.claude/skills/ instead of a project.")
+@click.option(
+    "--global",
+    "is_global",
+    is_flag=True,
+    default=False,
+    help="Update skill in ~/.claude/skills/ instead of a project.",
+)
 @click.option(
     "--agent",
     default="claude",
@@ -61,13 +66,10 @@ def update(name: str, project: str, *, is_global: bool, agent: str) -> None:
     project_skill_link = target_skills_dir / name
     if project_skill_link.is_symlink():
         resolved = project_skill_link.resolve()
-        click.echo(
-            f"Skill '{name}' is installed as symlink -> {resolved}"
-        )
+        click.echo(f"Skill '{name}' is installed as symlink -> {resolved}")
         click.echo("No update needed — symlink points directly to repository source.")
         click.echo(
-            f"To reinstall: skill-sync remove {name} && "
-            f"skill-sync install {name}"
+            f"To reinstall: skill-sync remove {name} && skill-sync install {name}"
         )
         return
 

@@ -91,9 +91,7 @@ def load_config() -> SkillSyncConfig:
     agent_dirs: dict[str, AgentDirOverride] = {}
     for agent_name, entry in agents_data.items():
         if not isinstance(entry, dict):
-            raise ConfigError(
-                f"Invalid [agents.{agent_name}] entry: expected a table"
-            )
+            raise ConfigError(f"Invalid [agents.{agent_name}] entry: expected a table")
         global_dir = entry.get("global_dir")
         project_dir = entry.get("project_dir")
         if global_dir is not None and not isinstance(global_dir, str):

@@ -17,8 +17,13 @@ from dl_skills_manager.core.linker import remove_link
 @click.command()
 @click.argument("name")
 @click.argument("project", default=".")
-@click.option("--global", "is_global", is_flag=True, default=False,
-              help="Remove skill from ~/.claude/skills/ instead of a project.")
+@click.option(
+    "--global",
+    "is_global",
+    is_flag=True,
+    default=False,
+    help="Remove skill from ~/.claude/skills/ instead of a project.",
+)
 @click.option(
     "--agent",
     default="claude",

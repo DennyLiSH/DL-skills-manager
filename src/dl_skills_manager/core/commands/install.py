@@ -20,8 +20,13 @@ from dl_skills_manager.core.linker import create_link
 @click.command()
 @click.argument("name")  # format: skill-name[@version]
 @click.argument("project", default=".")
-@click.option("--global", "is_global", is_flag=True, default=False,
-              help="Install to ~/.claude/skills/ instead of a project.")
+@click.option(
+    "--global",
+    "is_global",
+    is_flag=True,
+    default=False,
+    help="Install to ~/.claude/skills/ instead of a project.",
+)
 @click.option(
     "--link-mode",
     type=click.Choice(["symlink", "copy"]),

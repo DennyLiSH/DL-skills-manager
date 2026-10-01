@@ -231,9 +231,7 @@ class TestUpdateCommand:
         fake_home = tmp_path / "home"
         fake_home.mkdir()
         config = mock_config(repo_with_skill)
-        config.agent_dirs = {
-            "codex": AgentDirOverride(global_dir="~/.codex/skills")
-        }
+        config.agent_dirs = {"codex": AgentDirOverride(global_dir="~/.codex/skills")}
 
         with (
             patch(
