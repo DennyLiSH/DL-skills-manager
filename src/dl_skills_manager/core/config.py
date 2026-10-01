@@ -9,12 +9,13 @@ __all__ = [
     "load_config",
 ]
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from tomllib import TOMLDecodeError
 from tomllib import load as load_toml
 from typing import Literal
 
+from dl_skills_manager.core.agents import AgentDirOverride
 from dl_skills_manager.core.exceptions import ConfigError
 
 type LinkMode = Literal["symlink", "copy"]
@@ -27,6 +28,7 @@ class SkillSyncConfig:
     path: Path
     skills_store: Path
     default_link_mode: LinkMode
+    agent_dirs: dict[str, AgentDirOverride] = field(default_factory=dict)
 
 
 def expand_path(path_str: str) -> Path:
@@ -85,10 +87,28 @@ def load_config() -> SkillSyncConfig:
     else:
         path = repo_path
 
+    agents_data = data.get("agents", {})
+    agent_dirs: dict[str, AgentDirOverride] = {}
+    for agent_name, entry in agents_data.items():
+        if not isinstance(entry, dict):
+            raise ConfigError(
+                f"Invalid [agents.{agent_name}] entry: expected a table"
+            )
+        global_dir = entry.get("global_dir")
+        project_dir = entry.get("project_dir")
+        if global_dir is not None and not isinstance(global_dir, str):
+            raise ConfigError(f"[agents.{agent_name}] global_dir must be a string")
+        if project_dir is not None and not isinstance(project_dir, str):
+            raise ConfigError(f"[agents.{agent_name}] project_dir must be a string")
+        agent_dirs[str(agent_name)] = AgentDirOverride(
+            global_dir=global_dir, project_dir=project_dir
+        )
+
     return SkillSyncConfig(
         path=path,
         skills_store=skills_store,
         default_link_mode=default_link_mode,
+        agent_dirs=agent_dirs,
     )
 
 

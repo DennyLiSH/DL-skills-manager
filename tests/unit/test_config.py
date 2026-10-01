@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+from dl_skills_manager.core.agents import AgentDirOverride
 from dl_skills_manager.core.config import (
     SkillSyncConfig,
     create_default_config,
@@ -139,3 +140,63 @@ default_link_mode = "invalid"
             pytest.raises(ConfigError, match="default_link_mode"),
         ):
             load_config()
+
+
+class TestAgentDirsParsing:
+    """Tests for [agents] table parsing in load_config."""
+
+    def _write_config(self, tmp_path: Path, extra: str = "") -> None:
+        repo_path = tmp_path / ".skill-sync"
+        repo_path.mkdir()
+        (repo_path / "config.toml").write_text(
+            "[basic]\n"
+            "path = '~/.skill-sync'\n"
+            "skills_store = '/tmp/skills'\n"
+            "\n"
+            "[settings]\n"
+            "default_link_mode = 'copy'\n" + extra
+        )
+
+    def _load(self, tmp_path: Path) -> SkillSyncConfig:
+        with patch(
+            "dl_skills_manager.core.config.get_default_repo_path",
+            return_value=tmp_path / ".skill-sync",
+        ):
+            return load_config()
+
+    def test_no_agents_table_defaults_empty(self, tmp_path: Path) -> None:
+        self._write_config(tmp_path)
+        config = self._load(tmp_path)
+        assert config.agent_dirs == {}
+
+    def test_parses_overrides(self, tmp_path: Path) -> None:
+        self._write_config(
+            tmp_path,
+            "\n[agents.codex]\n"
+            "global_dir = '~/.codex/skills'\n"
+            "\n"
+            "[agents.mytool]\n"
+            "project_dir = '.mytool/skills'\n",
+        )
+        config = self._load(tmp_path)
+        assert config.agent_dirs["codex"] == AgentDirOverride(
+            global_dir="~/.codex/skills"
+        )
+        assert config.agent_dirs["mytool"] == AgentDirOverride(
+            project_dir=".mytool/skills"
+        )
+
+    def test_non_table_entry_raises(self, tmp_path: Path) -> None:
+        self._write_config(tmp_path, "\n[agents]\ncodex = 'oops'\n")
+        with pytest.raises(ConfigError, match=r"agents\.codex"):
+            self._load(tmp_path)
+
+    def test_non_string_global_dir_raises(self, tmp_path: Path) -> None:
+        self._write_config(tmp_path, "\n[agents.codex]\nglobal_dir = 123\n")
+        with pytest.raises(ConfigError, match="global_dir must be a string"):
+            self._load(tmp_path)
+
+    def test_non_string_project_dir_raises(self, tmp_path: Path) -> None:
+        self._write_config(tmp_path, "\n[agents.codex]\nproject_dir = true\n")
+        with pytest.raises(ConfigError, match="project_dir must be a string"):
+            self._load(tmp_path)
