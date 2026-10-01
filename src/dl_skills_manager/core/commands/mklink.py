@@ -24,13 +24,27 @@ SKILL_MARKER = "SKILL.md"
     default=False,
     help="Link to ~/.claude/skills/ instead of a project.",
 )
-def mklink(source_path: str, project: str, prefix: str, *, is_global: bool) -> None:
+@click.option(
+    "--agent",
+    default="claude",
+    show_default=True,
+    help="Target agent dir (builtin registry only, no [agents] config).",
+)
+def mklink(
+    source_path: str,
+    project: str,
+    prefix: str,
+    *,
+    is_global: bool,
+    agent: str,
+) -> None:
     """Batch symlink skills from SOURCE_PATH to project's .claude/skills/.
 
     Scans SOURCE_PATH for subdirectories containing SKILL.md and creates
     symlinks (or copies on Windows without symlink privilege) in the
     project's .claude/skills/ directory.
 
+    Use --agent to target other agents' skills dirs (builtin registry only).
     Use --prefix to namespace linked skills (e.g. --prefix gstack-).
     Use --global to link to ~/.claude/skills/ instead.
     """
@@ -40,12 +54,13 @@ def mklink(source_path: str, project: str, prefix: str, *, is_global: bool) -> N
     source_dir = Path(source_path).resolve()
 
     if is_global:
-        target_dir = resolve_skills_target_dir(global_flag=True)
+        target_dir = resolve_skills_target_dir(global_flag=True, agent=agent)
     else:
         project_dir = Path(project).resolve()
         target_dir = resolve_skills_target_dir(
             global_flag=False,
             project_path=project_dir,
+            agent=agent,
         )
 
     linked = 0

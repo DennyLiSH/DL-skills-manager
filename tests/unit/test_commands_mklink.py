@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 
@@ -227,3 +228,86 @@ class TestMklinkCommand:
 
         assert result.exit_code != 0
         assert "Cannot specify both --global and a PROJECT path" in result.output
+
+    def test_mklink_agent_codex_project(
+        self, cli_runner: CliRunner, source_dir: Path, project_dir: Path
+    ) -> None:
+        """--agent codex links into <project>/.agents/skills/."""
+        result = cli_runner.invoke(
+            main,
+            ["mklink", "--agent", "codex", str(source_dir), str(project_dir)],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert (project_dir / ".agents" / "skills" / "skill-a").exists()
+        assert (project_dir / ".agents" / "skills" / "skill-b").exists()
+
+    def test_mklink_agent_pi_global(
+        self, cli_runner: CliRunner, source_dir: Path, tmp_path: Path
+    ) -> None:
+        """--agent pi --global links into ~/.pi/agent/skills/."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+
+        with patch(
+            "dl_skills_manager.core.commands._shared.Path.home",
+            return_value=fake_home,
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["mklink", "--agent", "pi", "--global", str(source_dir)],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert (fake_home / ".pi" / "agent" / "skills" / "skill-a").exists()
+
+    def test_mklink_unknown_agent_errors(
+        self, cli_runner: CliRunner, source_dir: Path, project_dir: Path
+    ) -> None:
+        result = cli_runner.invoke(
+            main,
+            ["mklink", "--agent", "nope", str(source_dir), str(project_dir)],
+        )
+
+        assert result.exit_code != 0
+        assert "Unknown agent" in result.output
+
+    def test_mklink_ignores_agents_config(
+        self, cli_runner: CliRunner, source_dir: Path, tmp_path: Path
+    ) -> None:
+        """D6 guard: mklink never reads [agents] config overrides.
+
+        A real config.toml with a codex override exists, yet mklink must
+        still resolve codex to the builtin ~/.agents/skills/.
+        """
+        repo_path = tmp_path / ".skill-sync"
+        repo_path.mkdir()
+        (repo_path / "config.toml").write_text(
+            "[basic]\n"
+            "path = 'x'\n"
+            "skills_store = 'x'\n"
+            "\n"
+            "[agents.codex]\n"
+            "global_dir = '~/.codex/skills'\n"
+        )
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+
+        with (
+            patch(
+                "dl_skills_manager.core.config.get_default_repo_path",
+                return_value=repo_path,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.Path.home",
+                return_value=fake_home,
+            ),
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["mklink", "--agent", "codex", "--global", str(source_dir)],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert (fake_home / ".agents" / "skills" / "skill-a").exists()
+        assert not (fake_home / ".codex" / "skills").exists()
