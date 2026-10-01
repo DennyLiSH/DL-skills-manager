@@ -315,6 +315,104 @@ class TestUpdateSymlinkSkip:
         assert "symlink" in result.output.lower()
         assert "No update needed" in result.output
 
+    def test_update_symlink_skip_default_message_has_no_flags(
+        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    ) -> None:
+        """Default scope: reinstall hint names no flags (output unchanged)."""
+        skills_dir = project_dir / ".claude" / "skills"
+        skills_dir.mkdir(parents=True)
+
+        mock_cfg = mock_config(repo_with_skill)
+        with (
+            patch(
+                "dl_skills_manager.core.commands.update.load_config",
+                return_value=mock_cfg,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.load_config",
+                return_value=mock_cfg,
+            ),
+            patch.object(Path, "is_symlink", return_value=True),
+        ):
+            result = cli_runner.invoke(
+                main, ["update", "test-skill", str(project_dir)]
+            )
+
+        assert result.exit_code == 0, result.output
+        assert (
+            "To reinstall: skill-sync remove test-skill && "
+            "skill-sync install test-skill" in result.output
+        )
+        assert "--agent" not in result.output
+        assert "--global" not in result.output
+
+    def test_update_symlink_skip_agent_global_message_carries_flags(
+        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+    ) -> None:
+        """--global --agent codex: reinstall hint carries both flags."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+
+        mock_cfg = mock_config(repo_with_skill)
+        with (
+            patch(
+                "dl_skills_manager.core.commands.update.load_config",
+                return_value=mock_cfg,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.load_config",
+                return_value=mock_cfg,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.Path.home",
+                return_value=fake_home,
+            ),
+            patch.object(Path, "is_symlink", return_value=True),
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["update", "--global", "--agent", "codex", "test-skill"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert (
+            "skill-sync remove test-skill --global --agent codex" in result.output
+        )
+        assert (
+            "skill-sync install test-skill --global --agent codex" in result.output
+        )
+
+    def test_update_symlink_skip_agent_only_message_carries_agent_flag(
+        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    ) -> None:
+        """--agent codex without --global: hint carries only the agent flag."""
+        skills_dir = project_dir / ".agents" / "skills"
+        skills_dir.mkdir(parents=True)
+
+        mock_cfg = mock_config(repo_with_skill)
+        with (
+            patch(
+                "dl_skills_manager.core.commands.update.load_config",
+                return_value=mock_cfg,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.load_config",
+                return_value=mock_cfg,
+            ),
+            patch.object(Path, "is_symlink", return_value=True),
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["update", "--agent", "codex", "test-skill", str(project_dir)],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert (
+            "skill-sync remove test-skill --agent codex" in result.output
+        )
+        assert "skill-sync install test-skill --agent codex" in result.output
+        assert "--global" not in result.output
+
     def test_update_proceeds_with_copy_target(
         self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
     ) -> None:

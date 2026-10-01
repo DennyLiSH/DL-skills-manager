@@ -60,8 +60,15 @@ def update(name: str, project: str, *, is_global: bool, agent: str) -> None:
         resolved = project_skill_link.resolve()
         click.echo(f"Skill '{name}' is installed as symlink -> {resolved}")
         click.echo("No update needed — symlink points directly to repository source.")
+        reinstall_flags: list[str] = []
+        if is_global:
+            reinstall_flags.append("--global")
+        if agent != "claude":
+            reinstall_flags.append(f"--agent {agent}")
+        flag_suffix = f" {' '.join(reinstall_flags)}" if reinstall_flags else ""
         click.echo(
-            f"To reinstall: skill-sync remove {name} && skill-sync install {name}"
+            f"To reinstall: skill-sync remove {name}{flag_suffix} && "
+            f"skill-sync install {name}{flag_suffix}"
         )
         return
 
