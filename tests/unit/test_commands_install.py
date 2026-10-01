@@ -408,6 +408,34 @@ class TestInstallCommand:
         assert result.exit_code != 0
         assert "Unknown agent" in result.output
 
+    def test_install_rejects_bare_tilde_slash_global_dir(
+        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+    ) -> None:
+        """CLI E2E: [agents] global_dir='~/' fails with a friendly error."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        mock_config = _make_mock_config(repo_with_skill)
+        mock_config.agent_dirs = {"mytool": AgentDirOverride(global_dir="~/")}
+
+        with (
+            patch(
+                "dl_skills_manager.core.commands.install.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.Path.home",
+                return_value=fake_home,
+            ),
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["install", "--global", "--agent", "mytool", "test-skill"],
+            )
+
+        assert result.exit_code != 0
+        assert "path under the home directory" in result.output
+        assert not (fake_home / "test-skill").exists()
+
 
 class TestInstallLinkMode:
     """Tests for install command link mode behavior."""
