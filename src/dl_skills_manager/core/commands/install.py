@@ -7,12 +7,11 @@ import click
 from dl_skills_manager.core.commands._shared import (
     find_skill_dir,
     find_version_dir,
-    install_skill_copy,
     resolve_command_target_dir,
     validate_skill_name,
 )
 from dl_skills_manager.core.config import load_config
-from dl_skills_manager.core.linker import create_link
+from dl_skills_manager.core.linker import copy_skill_dir, create_link
 
 
 @click.command()
@@ -93,12 +92,7 @@ def install(
     if effective_mode == "symlink":
         create_link(version_dir, project_skill_path, force=True)
     else:
-        install_skill_copy(
-            target_skills_dir,
-            name,
-            skill_dir,
-            version_dir,
-        )
+        copy_skill_dir(version_dir, project_skill_path, force=True)
 
     actual_version = version if version else "latest"
     click.echo(f"Installed {name}@{actual_version} to {project_skill_path}")

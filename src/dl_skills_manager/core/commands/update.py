@@ -76,7 +76,6 @@ def update(name: str, project: str, *, is_global: bool, agent: str) -> None:
     update_skill_copy(
         target_skills_dir,
         name,
-        skill_dir,
         version_dir,
     )
 

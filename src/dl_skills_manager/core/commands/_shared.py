@@ -23,7 +23,6 @@ __all__ = [
     "find_skill_dir",
     "find_version_dir",
     "get_latest_file_timestamp",
-    "install_skill_copy",
     "resolve_command_target_dir",
     "resolve_skills_target_dir",
     "update_skill_copy",
@@ -232,40 +231,9 @@ def resolve_command_target_dir(
     )
 
 
-def install_skill_copy(
-    target_skills_dir: Path,
-    name: str,
-    skill_dir: Path,
-    version_dir: Path,
-) -> Path:
-    """Copy a skill into the target directory (for fresh installs).
-
-    Always uses directory copy. The target folder name is just {name},
-    without any version suffix.
-
-    Args:
-        target_skills_dir: Path to the target skills directory.
-        name: Skill name (used for target folder name).
-        skill_dir: Path to the skill directory in the repo.
-        version_dir: Path to the version directory to copy.
-
-    Returns:
-        Path to the created skill copy.
-
-    Raises:
-        LinkError: If copy operation fails.
-    """
-    project_skill_copy = target_skills_dir / name
-
-    copy_skill_dir(version_dir, project_skill_copy, force=True)
-
-    return project_skill_copy
-
-
 def update_skill_copy(
     target_skills_dir: Path,
     name: str,
-    skill_dir: Path,
     version_dir: Path,
 ) -> Path:
     """Update a skill with backup/restore protection.
@@ -276,7 +244,6 @@ def update_skill_copy(
     Args:
         target_skills_dir: Path to the target skills directory.
         name: Skill name.
-        skill_dir: Path to the skill directory in the repo.
         version_dir: Path to the version directory to copy.
 
     Returns:

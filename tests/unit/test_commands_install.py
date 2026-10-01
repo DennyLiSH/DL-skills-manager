@@ -523,21 +523,24 @@ class TestInstallLinkMode:
     def test_install_link_mode_cli_override_to_copy(
         self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
     ) -> None:
-        """Test --link-mode copy overrides config default (symlink)."""
+        """Test --link-mode copy overrides config default (symlink).
+
+        Also covers overwrite: an existing old copy is replaced by the
+        repository version via copy_skill_dir(force=True).
+        """
         symlink_config = SkillSyncConfig(
             path=repo_with_skill,
             skills_store=repo_with_skill / "data",
             default_link_mode="symlink",
         )
 
-        with (
-            patch(
-                "dl_skills_manager.core.commands.install.load_config",
-                return_value=symlink_config,
-            ),
-            patch(
-                "dl_skills_manager.core.commands.install.install_skill_copy",
-            ) as mock_install_copy,
+        existing = project_dir / ".claude" / "skills" / "test-skill"
+        existing.mkdir(parents=True)
+        (existing / "SKILL.md").write_text("# Old Version\n")
+
+        with patch(
+            "dl_skills_manager.core.commands.install.load_config",
+            return_value=symlink_config,
         ):
             result = cli_runner.invoke(
                 main,
@@ -545,7 +548,9 @@ class TestInstallLinkMode:
             )
 
         assert result.exit_code == 0, result.output
-        mock_install_copy.assert_called_once()
+        assert (existing / "SKILL.md").read_text() == "# Test Skill\n"
+        assert existing.is_dir()
+        assert not existing.is_symlink()
 
     def test_install_symlink_config_with_cli_symlink_override(
         self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
