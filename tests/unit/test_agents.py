@@ -198,3 +198,36 @@ class TestGlobalDirHardening:
             overrides = {"mytool": AgentDirOverride(global_dir=bad)}
             with pytest.raises(ValidationError, match="must not contain"):
                 resolve_agent_dirs("mytool", overrides)
+
+
+class TestProjectDirNormalization:
+    """project_dir values are returned in POSIX style (20261001 code review)."""
+
+    def test_project_dir_backslash_normalized_custom_agent(self) -> None:
+        overrides = {"mytool": AgentDirOverride(project_dir=".mytool\\skills")}
+        assert resolve_agent_dirs("mytool", overrides) == (None, ".mytool/skills")
+
+    def test_project_dir_backslash_normalized_builtin_override(self) -> None:
+        overrides = {"codex": AgentDirOverride(project_dir=".codex\\skills")}
+        assert resolve_agent_dirs("codex", overrides) == (
+            ".agents/skills",
+            ".codex/skills",
+        )
+
+    def test_project_dir_colon_segment_rejected(self) -> None:
+        """Colon segments are Windows-invalid names; fail early and clearly."""
+        overrides = {"mytool": AgentDirOverride(project_dir=".mytool/sk:ills")}
+        with pytest.raises(ValidationError, match="':'"):
+            resolve_agent_dirs("mytool", overrides)
+
+    def test_project_dir_surrounding_whitespace_rejected(self) -> None:
+        overrides = {"mytool": AgentDirOverride(project_dir=" .mytool/skills")}
+        with pytest.raises(ValidationError, match="whitespace"):
+            resolve_agent_dirs("mytool", overrides)
+
+    def test_project_dir_dot_segment_rejected(self) -> None:
+        """'.' / './' resolve to the project root itself."""
+        for bad in (".", "./"):
+            overrides = {"mytool": AgentDirOverride(project_dir=bad)}
+            with pytest.raises(ValidationError, match="relative path"):
+                resolve_agent_dirs("mytool", overrides)

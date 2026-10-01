@@ -45,16 +45,33 @@ BUILTIN_AGENTS: dict[str, AgentSpec] = {
 }
 
 
-def _validate_project_dir(value: str) -> None:
+def _normalize_project_dir(value: str) -> str:
+    """Validate a project_dir value and return its POSIX-style form."""
     if not value.strip():
         raise ValidationError("agents project_dir must not be empty")
+    if value != value.strip():
+        raise ValidationError(
+            f"agents project_dir values must not have leading/trailing "
+            f"whitespace (got {value!r})"
+        )
     normalized = value.replace("\\", "/")
     parts = normalized.split("/")
     has_drive = len(normalized) >= 2 and normalized[1] == ":"
-    if normalized.startswith(("/", "~")) or has_drive or ".." in parts:
+    if (
+        normalized.startswith(("/", "~"))
+        or has_drive
+        or ".." in parts
+        or "." in parts
+    ):
         raise ValidationError(
-            f"agents project_dir must be a relative path without '..' (got {value!r})"
+            f"agents project_dir must be a relative path without '.' or '..' "
+            f"(got {value!r})"
         )
+    if any(":" in part for part in parts):
+        raise ValidationError(
+            f"agents project_dir values must not contain ':' (got {value!r})"
+        )
+    return normalized
 
 
 def _normalize_global_dir(value: str) -> str:
@@ -159,7 +176,7 @@ def resolve_agent_dirs(
                 project_dir = override.project_dir
 
     if project_dir is not None:
-        _validate_project_dir(project_dir)
+        project_dir = _normalize_project_dir(project_dir)
     if global_dir is not None:
         global_dir = _normalize_global_dir(global_dir)
 
