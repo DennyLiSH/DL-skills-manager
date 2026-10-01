@@ -29,9 +29,14 @@ from dl_skills_manager.core.linker import remove_link
     help="Target agent dir (claude/codex/pi/zcode/workbuddy or [agents]).",
 )
 def remove(name: str, project: str, *, is_global: bool, agent: str) -> None:
-    """Remove an installed skill from the current project.
+    """Remove an installed skill from a project or agent skills directory.
 
-    Removes the symlink/copy.
+    Removes the symlink/copy. Use --global to target the agent's global
+    skills dir instead of a project; use --agent to target another
+    agent's skills dir (builtin registry or [agents] config overrides).
+
+    Requires an initialized skill-sync repository: remove reads
+    config.toml for [agents] overrides and fails when it is missing.
     """
     if is_global and project != ".":
         raise click.UsageError("Cannot specify both --global and a PROJECT path.")

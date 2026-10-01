@@ -265,6 +265,15 @@ class TestRemoveCommand:
         assert result.exit_code == 0, result.output
         assert not skill_dir.exists()
 
+    def test_remove_help_documents_agent_and_init_requirement(
+        self, cli_runner: CliRunner
+    ) -> None:
+        """--help covers --agent targeting and the initialized-repo requirement."""
+        result = cli_runner.invoke(main, ["remove", "--help"])
+
+        assert result.exit_code == 0
+        assert "initialized skill-sync repository" in result.output
+
 
 class TestRemoveSymlink:
     """Tests for remove command symlink handling."""
