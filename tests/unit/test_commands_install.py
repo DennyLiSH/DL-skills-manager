@@ -8,6 +8,7 @@ import pytest
 import tomli_w
 
 from dl_skills_manager.cli import main
+from dl_skills_manager.core.agents import AgentDirOverride
 from dl_skills_manager.core.config import SkillSyncConfig
 
 if TYPE_CHECKING:
@@ -216,6 +217,196 @@ class TestInstallCommand:
 
         assert result.exit_code != 0
         assert "Cannot specify both --global and a PROJECT path" in result.output
+
+    def test_install_agent_codex_global(
+        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+    ) -> None:
+        """--agent codex --global installs to ~/.agents/skills/."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        mock_config = _make_mock_config(repo_with_skill)
+
+        with (
+            patch(
+                "dl_skills_manager.core.commands.install.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.Path.home",
+                return_value=fake_home,
+            ),
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["install", "--global", "--agent", "codex", "test-skill"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert (fake_home / ".agents" / "skills" / "test-skill").exists()
+
+    def test_install_agent_pi_project(
+        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    ) -> None:
+        """--agent pi installs to <project>/.pi/skills/."""
+        mock_config = _make_mock_config(repo_with_skill)
+
+        with patch(
+            "dl_skills_manager.core.commands.install.load_config",
+            return_value=mock_config,
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["install", "--agent", "pi", "test-skill", str(project_dir)],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert (project_dir / ".pi" / "skills" / "test-skill").exists()
+
+    def test_install_agent_uses_config_override(
+        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+    ) -> None:
+        """[agents] override in config redirects the target dir."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        mock_config = _make_mock_config(repo_with_skill)
+        mock_config.agent_dirs = {
+            "codex": AgentDirOverride(global_dir="~/.codex/skills")
+        }
+
+        with (
+            patch(
+                "dl_skills_manager.core.commands.install.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.Path.home",
+                return_value=fake_home,
+            ),
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["install", "--global", "--agent", "codex", "test-skill"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert (fake_home / ".codex" / "skills" / "test-skill").exists()
+
+    def test_install_agent_zcode_global(
+        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+    ) -> None:
+        """--agent zcode --global installs to ~/.zcode/skills/."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        mock_config = _make_mock_config(repo_with_skill)
+
+        with (
+            patch(
+                "dl_skills_manager.core.commands.install.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.Path.home",
+                return_value=fake_home,
+            ),
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["install", "--global", "--agent", "zcode", "test-skill"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert (fake_home / ".zcode" / "skills" / "test-skill").exists()
+
+    def test_install_agent_workbuddy_global(
+        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+    ) -> None:
+        """--agent workbuddy --global installs to ~/.workbuddy/skills/."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        mock_config = _make_mock_config(repo_with_skill)
+
+        with (
+            patch(
+                "dl_skills_manager.core.commands.install.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.Path.home",
+                return_value=fake_home,
+            ),
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["install", "--global", "--agent", "workbuddy", "test-skill"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert (fake_home / ".workbuddy" / "skills" / "test-skill").exists()
+
+    def test_install_custom_agent_from_config(
+        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+    ) -> None:
+        """Config-defined custom agent (non-builtin name) resolves too."""
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        mock_config = _make_mock_config(repo_with_skill)
+        mock_config.agent_dirs = {
+            "mytool": AgentDirOverride(global_dir="~/.mytool/skills")
+        }
+
+        with (
+            patch(
+                "dl_skills_manager.core.commands.install.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "dl_skills_manager.core.commands._shared.Path.home",
+                return_value=fake_home,
+            ),
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["install", "--global", "--agent", "mytool", "test-skill"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert (fake_home / ".mytool" / "skills" / "test-skill").exists()
+
+    def test_install_workbuddy_project_errors(
+        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    ) -> None:
+        """workbuddy has no project dir — clear error."""
+        mock_config = _make_mock_config(repo_with_skill)
+
+        with patch(
+            "dl_skills_manager.core.commands.install.load_config",
+            return_value=mock_config,
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["install", "--agent", "workbuddy", "test-skill", str(project_dir)],
+            )
+
+        assert result.exit_code != 0
+        assert "--global" in result.output
+
+    def test_install_unknown_agent_errors(
+        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    ) -> None:
+        """Unknown agent — error lists available agents."""
+        mock_config = _make_mock_config(repo_with_skill)
+
+        with patch(
+            "dl_skills_manager.core.commands.install.load_config",
+            return_value=mock_config,
+        ):
+            result = cli_runner.invoke(
+                main,
+                ["install", "--agent", "nope", "test-skill", str(project_dir)],
+            )
+
+        assert result.exit_code != 0
+        assert "Unknown agent" in result.output
 
 
 class TestInstallLinkMode:

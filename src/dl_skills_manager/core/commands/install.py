@@ -28,7 +28,20 @@ from dl_skills_manager.core.linker import create_link
     default=None,
     help="Override default link mode (symlink or copy) for this installation.",
 )
-def install(name: str, project: str, *, is_global: bool, link_mode: str | None) -> None:
+@click.option(
+    "--agent",
+    default="claude",
+    show_default=True,
+    help="Target agent dir (claude/codex/pi/zcode/workbuddy or [agents]).",
+)
+def install(
+    name: str,
+    project: str,
+    *,
+    is_global: bool,
+    link_mode: str | None,
+    agent: str,
+) -> None:
     """Install a skill into the current project.
 
     Creates a symlink or copies the skill to .claude/skills/{skill_name},
@@ -36,11 +49,14 @@ def install(name: str, project: str, *, is_global: bool, link_mode: str | None) 
 
     Supports name@version syntax for specifying version directly in the name.
 
+    Supports --agent to target non-Claude agent skills directories.
+
     Args:
         name: Name of the skill to install (optionally with @version suffix).
         project: Path to the project directory (default: current directory).
         is_global: If True, install to ~/.claude/skills/ globally.
         link_mode: Override the default link mode (force symlink instead of copy).
+        agent: Target agent whose skills directory to install into.
     """
     if is_global and project != ".":
         raise click.UsageError("Cannot specify both --global and a PROJECT path.")
@@ -62,11 +78,16 @@ def install(name: str, project: str, *, is_global: bool, link_mode: str | None) 
 
     # Resolve target skills directory
     if is_global:
-        target_skills_dir = resolve_skills_target_dir(global_flag=True)
+        target_skills_dir = resolve_skills_target_dir(
+            global_flag=True, agent=agent, agent_overrides=config.agent_dirs
+        )
     else:
         project_path = Path(project).resolve()
         target_skills_dir = resolve_skills_target_dir(
-            global_flag=False, project_path=project_path,
+            global_flag=False,
+            project_path=project_path,
+            agent=agent,
+            agent_overrides=config.agent_dirs,
         )
 
     # Create symlink or copy based on effective mode
