@@ -11,7 +11,6 @@ from dl_skills_manager.core.exceptions import LinkError
 from dl_skills_manager.core.linker import (
     _is_permission_error,
     create_link,
-    is_link_valid,
     remove_link,
 )
 
@@ -92,36 +91,6 @@ class TestRemoveLink:
         remove_link(target)
 
         assert not target.exists()
-
-
-class TestIsLinkValid:
-    """Tests for is_link_valid function."""
-
-    def test_returns_false_for_nonexistent_path(self, tmp_path: Path) -> None:
-        """Test False when path doesn't exist."""
-        assert is_link_valid(tmp_path / "nonexistent") is False
-
-    def test_returns_false_for_regular_file(self, tmp_path: Path) -> None:
-        """Test False for regular file (not symlink)."""
-        file = tmp_path / "file.txt"
-        file.write_text("content")
-        assert is_link_valid(file) is False
-
-    def test_returns_true_for_valid_symlink(self, tmp_path: Path) -> None:
-        """Test True for valid symlink."""
-        source = tmp_path / "source"
-        source.mkdir()
-        target = tmp_path / "link"
-        target.symlink_to(source)
-
-        assert is_link_valid(target) is True
-
-    def test_returns_false_for_broken_symlink(self, tmp_path: Path) -> None:
-        """Test False for broken symlink."""
-        target = tmp_path / "broken_link"
-        target.symlink_to(tmp_path / "nonexistent")
-
-        assert is_link_valid(target) is False
 
 
 class TestIsPermissionError:

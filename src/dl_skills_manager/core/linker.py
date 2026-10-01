@@ -3,7 +3,6 @@
 __all__ = [
     "copy_skill_dir",
     "create_link",
-    "is_link_valid",
     "remove_link",
 ]
 
@@ -166,24 +165,3 @@ def remove_link(target: Path) -> None:
             shutil.rmtree(target)
     except OSError as e:
         raise LinkError(f"Failed to remove {target}: {e}") from e
-
-
-def is_link_valid(target: Path) -> bool:
-    """Check if a symlink points to a valid target or copied directory exists.
-
-    Args:
-        target: Path to check.
-
-    Returns:
-        True if target is a valid symlink pointing to existing path,
-        or if target is a directory containing a valid skill (has SKILL.md).
-        Returns False if target does not exist.
-    """
-    if not target.exists():
-        return False
-    if target.is_symlink():
-        return target.resolve().exists()
-    # For copied directories, verify it contains expected skill content
-    if target.is_dir():
-        return target.joinpath("SKILL.md").exists()
-    return False
