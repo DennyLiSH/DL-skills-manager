@@ -334,9 +334,7 @@ class TestUpdateSymlinkSkip:
             ),
             patch.object(Path, "is_symlink", return_value=True),
         ):
-            result = cli_runner.invoke(
-                main, ["update", "test-skill", str(project_dir)]
-            )
+            result = cli_runner.invoke(main, ["update", "test-skill", str(project_dir)])
 
         assert result.exit_code == 0, result.output
         assert (
@@ -375,12 +373,8 @@ class TestUpdateSymlinkSkip:
             )
 
         assert result.exit_code == 0, result.output
-        assert (
-            "skill-sync remove test-skill --global --agent codex" in result.output
-        )
-        assert (
-            "skill-sync install test-skill --global --agent codex" in result.output
-        )
+        assert "skill-sync remove test-skill --global --agent codex" in result.output
+        assert "skill-sync install test-skill --global --agent codex" in result.output
 
     def test_update_symlink_skip_agent_only_message_carries_agent_flag(
         self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
@@ -407,9 +401,7 @@ class TestUpdateSymlinkSkip:
             )
 
         assert result.exit_code == 0, result.output
-        assert (
-            "skill-sync remove test-skill --agent codex" in result.output
-        )
+        assert "skill-sync remove test-skill --agent codex" in result.output
         assert "skill-sync install test-skill --agent codex" in result.output
         assert "--global" not in result.output
 
