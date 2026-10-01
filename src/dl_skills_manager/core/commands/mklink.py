@@ -5,7 +5,7 @@ from pathlib import Path
 import click
 
 from dl_skills_manager.core.commands._shared import (
-    resolve_skills_target_dir,
+    resolve_command_target_dir,
     validate_skill_name,
 )
 from dl_skills_manager.core.linker import create_link
@@ -53,15 +53,9 @@ def mklink(
 
     source_dir = Path(source_path).resolve()
 
-    if is_global:
-        target_dir = resolve_skills_target_dir(global_flag=True, agent=agent)
-    else:
-        project_dir = Path(project).resolve()
-        target_dir = resolve_skills_target_dir(
-            global_flag=False,
-            project_path=project_dir,
-            agent=agent,
-        )
+    target_dir = resolve_command_target_dir(
+        is_global=is_global, project=project, agent=agent
+    )
 
     linked = 0
     for subdir in sorted(source_dir.iterdir()):

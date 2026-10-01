@@ -2,12 +2,10 @@
 
 __all__ = ["remove"]
 
-from pathlib import Path
-
 import click
 
 from dl_skills_manager.core.commands._shared import (
-    resolve_skills_target_dir,
+    resolve_command_target_dir,
     validate_skill_name,
 )
 from dl_skills_manager.core.config import load_config
@@ -44,18 +42,12 @@ def remove(name: str, project: str, *, is_global: bool, agent: str) -> None:
     config = load_config()
 
     # Resolve target skills directory
-    if is_global:
-        target_skills_dir = resolve_skills_target_dir(
-            global_flag=True, agent=agent, agent_overrides=config.agent_dirs
-        )
-    else:
-        project_path = Path(project).resolve()
-        target_skills_dir = resolve_skills_target_dir(
-            global_flag=False,
-            project_path=project_path,
-            agent=agent,
-            agent_overrides=config.agent_dirs,
-        )
+    target_skills_dir = resolve_command_target_dir(
+        is_global=is_global,
+        project=project,
+        agent=agent,
+        agent_overrides=config.agent_dirs,
+    )
 
     # Remove symlink/copy
     project_skill_path = target_skills_dir / name

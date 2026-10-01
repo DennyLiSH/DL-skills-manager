@@ -37,6 +37,7 @@ __all__ = [
     "find_version_dir",
     "get_latest_file_timestamp",
     "install_skill_copy",
+    "resolve_command_target_dir",
     "resolve_skills_target_dir",
     "update_skill_copy",
     "validate_skill_name",
@@ -254,6 +255,45 @@ def resolve_skills_target_dir(
 
     target.mkdir(parents=True, exist_ok=True)
     return target
+
+
+def resolve_command_target_dir(
+    *,
+    is_global: bool,
+    project: str,
+    agent: str = "claude",
+    agent_overrides: Mapping[str, AgentDirOverride] | None = None,
+) -> Path:
+    """Resolve the target skills directory for a command invocation.
+
+    Wraps resolve_skills_target_dir() with the --global/project/agent flag
+    shape shared by install/update/remove/mklink.
+
+    Args:
+        is_global: If True, resolve the agent's global skills dir
+            (project is ignored).
+        project: Project path string (used when is_global is False).
+        agent: Agent name (default "claude").
+        agent_overrides: Config [agents] table, or None for builtin-only
+            resolution (used by mklink).
+
+    Returns:
+        Resolved target skills directory path.
+
+    Raises:
+        ValidationError: Propagated from resolve_skills_target_dir for
+            unknown agents, missing project scope, or invalid overrides.
+    """
+    if is_global:
+        return resolve_skills_target_dir(
+            global_flag=True, agent=agent, agent_overrides=agent_overrides
+        )
+    return resolve_skills_target_dir(
+        global_flag=False,
+        project_path=Path(project).resolve(),
+        agent=agent,
+        agent_overrides=agent_overrides,
+    )
 
 
 def install_skill_copy(

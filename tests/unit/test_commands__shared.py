@@ -10,6 +10,7 @@ from dl_skills_manager.core.agents import AgentDirOverride
 from dl_skills_manager.core.commands._shared import (
     find_skill_dir,
     find_version_dir,
+    resolve_command_target_dir,
     resolve_skills_target_dir,
 )
 from dl_skills_manager.core.exceptions import (
@@ -258,3 +259,44 @@ class TestResolveSkillsTargetDirAgent:
                     "mytool": AgentDirOverride(project_dir=".mytool/skills")
                 },
             )
+
+
+class TestResolveCommandTargetDir:
+    """Tests for the command-level target dir helper."""
+
+    def test_global_resolves_via_home(self, tmp_path: Path) -> None:
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        with patch(
+            "dl_skills_manager.core.commands._shared.Path.home",
+            return_value=fake_home,
+        ):
+            result = resolve_command_target_dir(
+                is_global=True, project=".", agent="codex"
+            )
+        assert result == fake_home / ".agents" / "skills"
+
+    def test_project_resolves_project_string(self, tmp_path: Path) -> None:
+        project = tmp_path / "proj"
+        project.mkdir()
+        result = resolve_command_target_dir(
+            is_global=False, project=str(project), agent="pi"
+        )
+        assert result == project / ".pi" / "skills"
+
+    def test_default_agent_is_claude(self, tmp_path: Path) -> None:
+        project = tmp_path / "proj"
+        project.mkdir()
+        result = resolve_command_target_dir(is_global=False, project=str(project))
+        assert result == project / ".claude" / "skills"
+
+    def test_agent_overrides_passthrough(self, tmp_path: Path) -> None:
+        project = tmp_path / "proj"
+        project.mkdir()
+        result = resolve_command_target_dir(
+            is_global=False,
+            project=str(project),
+            agent="codex",
+            agent_overrides={"codex": AgentDirOverride(project_dir=".codex/skills")},
+        )
+        assert result == project / ".codex" / "skills"

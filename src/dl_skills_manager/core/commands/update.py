@@ -2,14 +2,12 @@
 
 __all__ = ["update"]
 
-from pathlib import Path
-
 import click
 
 from dl_skills_manager.core.commands._shared import (
     find_skill_dir,
     find_version_dir,
-    resolve_skills_target_dir,
+    resolve_command_target_dir,
     update_skill_copy,
 )
 from dl_skills_manager.core.config import load_config
@@ -45,18 +43,12 @@ def update(name: str, project: str, *, is_global: bool, agent: str) -> None:
     config = load_config()
 
     # Resolve target skills directory
-    if is_global:
-        target_skills_dir = resolve_skills_target_dir(
-            global_flag=True, agent=agent, agent_overrides=config.agent_dirs
-        )
-    else:
-        project_path = Path(project).resolve()
-        target_skills_dir = resolve_skills_target_dir(
-            global_flag=False,
-            project_path=project_path,
-            agent=agent,
-            agent_overrides=config.agent_dirs,
-        )
+    target_skills_dir = resolve_command_target_dir(
+        is_global=is_global,
+        project=project,
+        agent=agent,
+        agent_overrides=config.agent_dirs,
+    )
 
     # Find skill and version directories (update always uses stable/latest)
     skill_dir = find_skill_dir(name, config=config)

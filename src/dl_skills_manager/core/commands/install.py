@@ -2,15 +2,13 @@
 
 __all__ = ["install"]
 
-from pathlib import Path
-
 import click
 
 from dl_skills_manager.core.commands._shared import (
     find_skill_dir,
     find_version_dir,
     install_skill_copy,
-    resolve_skills_target_dir,
+    resolve_command_target_dir,
     validate_skill_name,
 )
 from dl_skills_manager.core.config import load_config
@@ -82,18 +80,12 @@ def install(
     version_dir = find_version_dir(skill_dir, version=version)
 
     # Resolve target skills directory
-    if is_global:
-        target_skills_dir = resolve_skills_target_dir(
-            global_flag=True, agent=agent, agent_overrides=config.agent_dirs
-        )
-    else:
-        project_path = Path(project).resolve()
-        target_skills_dir = resolve_skills_target_dir(
-            global_flag=False,
-            project_path=project_path,
-            agent=agent,
-            agent_overrides=config.agent_dirs,
-        )
+    target_skills_dir = resolve_command_target_dir(
+        is_global=is_global,
+        project=project,
+        agent=agent,
+        agent_overrides=config.agent_dirs,
+    )
 
     # Create symlink or copy based on effective mode
     project_skill_path = target_skills_dir / name
