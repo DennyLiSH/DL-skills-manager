@@ -4,19 +4,10 @@ Provides common functionality used across multiple commands such as
 repository path resolution, skill directory lookup, and version parsing.
 """
 
-import dataclasses
-import logging
-import os
 import shutil
-import tempfile
 from collections.abc import Mapping
-from contextlib import suppress
-from dataclasses import is_dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast, overload
-
-import tomli_w
 
 from dl_skills_manager.core.agents import AgentDirOverride, resolve_agent_dirs
 from dl_skills_manager.core.config import SkillSyncConfig, load_config
@@ -25,14 +16,10 @@ from dl_skills_manager.core.exceptions import (
     SkillNotFoundError,
     ValidationError,
     VersionNotFoundError,
-    WriteError,
 )
 from dl_skills_manager.core.linker import copy_skill_dir
 
-logger = logging.getLogger(__name__)
-
 __all__ = [
-    "atomic_write_toml",
     "find_skill_dir",
     "find_version_dir",
     "get_latest_file_timestamp",
@@ -151,57 +138,6 @@ def find_version_dir(skill_dir: Path, version: str | None = None) -> Path:
         raise VersionNotFoundError(f"No version found for skill '{skill_dir.name}'")
 
     return skill_dir
-
-
-# Using overloads to properly handle both Mapping and dataclass inputs
-# - Mapping inputs are written directly
-# - dataclass inputs are converted via dataclasses.asdict()
-
-
-@overload
-def atomic_write_toml(path: Path, data: Mapping[str, object]) -> None: ...
-
-
-@overload
-def atomic_write_toml(path: Path, data: object) -> None: ...
-
-
-def atomic_write_toml(path: Path, data: Mapping[str, object] | object) -> None:
-    """Atomically write a TOML file using a temporary file.
-
-    Args:
-        path: Target file path.
-        data: Dictionary or dataclass to write as TOML.
-
-    Raises:
-        WriteError: If the write operation fails.
-    """
-    tmp_path: Path | None = None
-    try:
-        # Convert dataclass to dict if needed
-        if is_dataclass(data) and not isinstance(data, type):
-            # mypy doesn't narrow types through is_dataclass() check,
-            # so we must use cast. This is safe because:
-            # 1. is_dataclass() returns True for dataclass instances and classes
-            # 2. isinstance(data, type) being False confirms it's an instance
-            # 3. dataclasses.asdict() requires a dataclass instance
-            dump_data: Mapping[str, object] = dataclasses.asdict(data)
-        else:
-            dump_data = cast("Mapping[str, object]", data)
-        with tempfile.NamedTemporaryFile(
-            mode="wb", suffix=".toml", dir=path.parent, delete=False
-        ) as tmp:
-            tomli_w.dump(dump_data, tmp)
-            tmp_path = Path(tmp.name)
-        os.replace(tmp_path, path)
-    except OSError as e:
-        raise WriteError(f"Failed to write {path}") from e
-    finally:
-        # Clean up temp file if it still exists (replace may have failed).
-        # Only ignore FileNotFoundError - other errors should be surfaced.
-        if tmp_path is not None:
-            with suppress(FileNotFoundError):
-                tmp_path.unlink()
 
 
 def resolve_skills_target_dir(
