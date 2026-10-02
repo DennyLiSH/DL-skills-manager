@@ -10,7 +10,7 @@ from dl_skills_manager.core.commands._options import (
 )
 from dl_skills_manager.core.commands._shared import resolve_command_target_dir
 from dl_skills_manager.core.linker import create_link
-from dl_skills_manager.core.store import SKILL_MARKER, validate_skill_name
+from dl_skills_manager.core.store import is_skill_dir, validate_skill_name
 
 __all__ = ["link_skills", "mklink"]
 
@@ -49,11 +49,9 @@ def link_skills(
 
     linked: list[str] = []
     for subdir in sorted(source_dir.iterdir()):
-        if not subdir.is_dir():
-            continue
         if subdir.name.startswith("."):
             continue
-        if not (subdir / SKILL_MARKER).exists():
+        if not is_skill_dir(subdir):
             continue
 
         link_name = prefix + subdir.name

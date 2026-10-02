@@ -5,7 +5,13 @@ backup naming convention ({name}@{version}) lives here. Callers go
 through the SkillsStore interface instead of assembling paths.
 """
 
-__all__ = ["SKILL_MARKER", "Promotion", "SkillsStore", "validate_skill_name"]
+__all__ = [
+    "SKILL_MARKER",
+    "Promotion",
+    "SkillsStore",
+    "is_skill_dir",
+    "validate_skill_name",
+]
 
 import re
 import shutil
@@ -42,6 +48,15 @@ def validate_skill_name(name: str) -> None:
         raise ValidationError(
             "Skill name must be alphanumeric, hyphens, or underscores"
         )
+
+
+def is_skill_dir(path: Path) -> bool:
+    """True when path is a directory containing the SKILL marker.
+
+    The single definition of "what counts as a skill directory";
+    store scans and mklink's external directory scan share it.
+    """
+    return path.is_dir() and (path / SKILL_MARKER).exists()
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,9 +190,7 @@ class SkillsStore:
 
         skills: list[SkillInfo] = []
         for skill_dir in sorted(skills_subdir.iterdir()):
-            if not skill_dir.is_dir():
-                continue
-            if not (skill_dir / SKILL_MARKER).exists():
+            if not is_skill_dir(skill_dir):
                 continue
             history = sorted(history_by_skill.get(skill_dir.name, []), reverse=True)
             skills.append(SkillInfo(name=skill_dir.name, history=tuple(history)))
@@ -221,9 +234,9 @@ class SkillsStore:
         """
         validate_skill_name(name)
         dev_dir = self.dev_dir(name)
-        if not dev_dir.exists() or not dev_dir.is_dir():
+        if not dev_dir.is_dir():
             raise SkillNotFoundError(f"Skill '{name}' not found in .dev/ directory")
-        if not (dev_dir / SKILL_MARKER).exists():
+        if not is_skill_dir(dev_dir):
             raise SkillNotFoundError(f"Skill '{name}' in .dev/ has no SKILL.md")
 
         self.backups_dir().mkdir(parents=True, exist_ok=True)

@@ -11,7 +11,7 @@ from dl_skills_manager.core.exceptions import (
     ValidationError,
     VersionNotFoundError,
 )
-from dl_skills_manager.core.store import SkillsStore
+from dl_skills_manager.core.store import SkillsStore, is_skill_dir
 
 
 @pytest.fixture
@@ -184,3 +184,26 @@ class TestPromote:
         (dev / "README.md").write_text("x")
         with pytest.raises(SkillNotFoundError, match=r"no SKILL\.md"):
             s.promote("markerless")
+
+
+class TestIsSkillDir:
+    """The single 'what counts as a skill' predicate."""
+
+    def test_dir_with_marker_is_skill(self, tmp_path: Path) -> None:
+        d = tmp_path / "s"
+        d.mkdir()
+        (d / "SKILL.md").write_text("#\n")
+        assert is_skill_dir(d) is True
+
+    def test_dir_without_marker_is_not_skill(self, tmp_path: Path) -> None:
+        d = tmp_path / "s"
+        d.mkdir()
+        assert is_skill_dir(d) is False
+
+    def test_file_is_not_skill(self, tmp_path: Path) -> None:
+        f = tmp_path / "SKILL.md"
+        f.write_text("#\n")
+        assert is_skill_dir(f) is False
+
+    def test_missing_path_is_not_skill(self, tmp_path: Path) -> None:
+        assert is_skill_dir(tmp_path / "nope") is False
