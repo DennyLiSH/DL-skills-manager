@@ -7,6 +7,10 @@ from pathlib import Path
 
 import click
 
+from dl_skills_manager.core.commands._options import (
+    reject_global_with_project,
+    target_options,
+)
 from dl_skills_manager.core.commands._shared import (
     resolve_command_target_dir,
     update_skill_copy,
@@ -71,20 +75,7 @@ def update_skill(
 
 @click.command()
 @click.argument("name")
-@click.argument("project", default=".")
-@click.option(
-    "--global",
-    "is_global",
-    is_flag=True,
-    default=False,
-    help="Update skill in ~/.claude/skills/ instead of a project.",
-)
-@click.option(
-    "--agent",
-    default="claude",
-    show_default=True,
-    help="Target agent dir (claude/codex/pi/zcode/workbuddy or [agents]).",
-)
+@target_options()
 def update(name: str, project: str, *, is_global: bool, agent: str) -> None:
     """Update a skill to the latest stable version.
 
@@ -92,8 +83,7 @@ def update(name: str, project: str, *, is_global: bool, agent: str) -> None:
     installed as a symlink, the update is skipped since the symlink already
     points to the latest repository source.
     """
-    if is_global and project != ".":
-        raise click.UsageError("Cannot specify both --global and a PROJECT path.")
+    reject_global_with_project(is_global, project)
 
     config = load_config()
 

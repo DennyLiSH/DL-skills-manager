@@ -5,7 +5,7 @@ __all__ = ["mtp", "promote_skill"]
 import click
 
 from dl_skills_manager.core.config import SkillSyncConfig, load_config
-from dl_skills_manager.core.store import Promotion, SkillsStore, validate_skill_name
+from dl_skills_manager.core.store import Promotion, SkillsStore
 
 
 def promote_skill(name: str, *, config: SkillSyncConfig) -> Promotion:
@@ -38,10 +38,6 @@ def mtp(name: str) -> None:
     Copies the skill from .dev/{name} to the skills store root and
     creates a versioned backup in .bk/.
     """
-    # Validate before load_config to keep CLI error precedence stable
-    # (invalid name reports as ValidationError even without a repo).
-    validate_skill_name(name)
-
     config = load_config()
     result = promote_skill(name, config=config)
 

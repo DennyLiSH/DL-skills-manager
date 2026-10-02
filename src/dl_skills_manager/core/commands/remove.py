@@ -4,6 +4,10 @@ __all__ = ["remove", "remove_skill"]
 
 import click
 
+from dl_skills_manager.core.commands._options import (
+    reject_global_with_project,
+    target_options,
+)
 from dl_skills_manager.core.commands._shared import resolve_command_target_dir
 from dl_skills_manager.core.config import SkillSyncConfig, load_config
 from dl_skills_manager.core.linker import remove_link
@@ -53,20 +57,7 @@ def remove_skill(
 
 @click.command()
 @click.argument("name")
-@click.argument("project", default=".")
-@click.option(
-    "--global",
-    "is_global",
-    is_flag=True,
-    default=False,
-    help="Remove skill from ~/.claude/skills/ instead of a project.",
-)
-@click.option(
-    "--agent",
-    default="claude",
-    show_default=True,
-    help="Target agent dir (claude/codex/pi/zcode/workbuddy or [agents]).",
-)
+@target_options()
 def remove(name: str, project: str, *, is_global: bool, agent: str) -> None:
     """Remove an installed skill from a project or agent skills directory.
 
@@ -77,12 +68,7 @@ def remove(name: str, project: str, *, is_global: bool, agent: str) -> None:
     Requires an initialized skill-sync repository: remove reads
     config.toml for [agents] overrides and fails when it is missing.
     """
-    if is_global and project != ".":
-        raise click.UsageError("Cannot specify both --global and a PROJECT path.")
-
-    # Validate before load_config to keep CLI error precedence stable
-    # (invalid name reports as ValidationError even without a repo).
-    validate_skill_name(name)
+    reject_global_with_project(is_global, project)
 
     config = load_config()
 

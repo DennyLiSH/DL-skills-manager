@@ -4,6 +4,10 @@ from pathlib import Path
 
 import click
 
+from dl_skills_manager.core.commands._options import (
+    reject_global_with_project,
+    target_options,
+)
 from dl_skills_manager.core.commands._shared import resolve_command_target_dir
 from dl_skills_manager.core.linker import create_link
 from dl_skills_manager.core.store import SKILL_MARKER, validate_skill_name
@@ -61,21 +65,10 @@ def link_skills(
 
 @click.command()
 @click.argument("source_path", type=click.Path(exists=True, file_okay=False))
-@click.argument("project", default=".", required=False)
+@target_options(
+    agent_help="Target agent dir (builtin registry only, no [agents] config)."
+)
 @click.option("--prefix", default="", help="Symlink name prefix (e.g. 'gstack-')")
-@click.option(
-    "--global",
-    "is_global",
-    is_flag=True,
-    default=False,
-    help="Link to ~/.claude/skills/ instead of a project.",
-)
-@click.option(
-    "--agent",
-    default="claude",
-    show_default=True,
-    help="Target agent dir (builtin registry only, no [agents] config).",
-)
 def mklink(
     source_path: str,
     project: str,
@@ -94,8 +87,7 @@ def mklink(
     Use --prefix to namespace linked skills (e.g. --prefix gstack-).
     Use --global to link to ~/.claude/skills/ instead.
     """
-    if is_global and project != ".":
-        raise click.UsageError("Cannot specify both --global and a PROJECT path.")
+    reject_global_with_project(is_global, project)
 
     source_dir = Path(source_path).resolve()
 
