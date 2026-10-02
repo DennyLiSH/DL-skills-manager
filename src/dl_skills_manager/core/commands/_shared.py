@@ -14,36 +14,41 @@ from dl_skills_manager.core.linker import copy_skill_dir
 
 __all__ = [
     "resolve_command_target_dir",
-    "resolve_skills_target_dir",
     "update_skill_copy",
 ]
 
 
-def resolve_skills_target_dir(
+def resolve_command_target_dir(
     *,
-    global_flag: bool,
-    project_path: Path | None = None,
+    is_global: bool,
+    project: str,
     agent: str = "claude",
     agent_overrides: Mapping[str, AgentDirOverride] | None = None,
 ) -> Path:
-    """Resolve the target directory for skill installation.
+    """Resolve the target skills directory for a command invocation.
+
+    Single entry point for install/update/remove/mklink target
+    resolution: agent registry lookup, [agents] config overrides,
+    scope validation, and target dir creation.
 
     Args:
-        global_flag: If True, resolve to the agent's global skills dir.
-        project_path: Project path (required when global_flag is False).
-        agent: Agent name (default "claude" for backward compatibility).
-        agent_overrides: Config [agents] table, or None for builtin-only.
+        is_global: If True, resolve the agent's global skills dir
+            (project is ignored).
+        project: Project path string (used when is_global is False).
+        agent: Agent name (default "claude").
+        agent_overrides: Config [agents] table, or None for builtin-only
+            resolution (used by mklink).
 
     Returns:
-        Resolved target skills directory path.
+        Resolved target skills directory path (created if missing).
 
     Raises:
-        ValidationError: If agent is unknown, project_path is missing,
-            or the agent does not support the requested scope.
+        ValidationError: Unknown agent, agent without the requested
+            scope, or invalid [agents] override values.
     """
     global_dir, project_dir = resolve_agent_dirs(agent, agent_overrides)
 
-    if global_flag:
+    if is_global:
         if global_dir is None:
             raise ValidationError(
                 f"agent '{agent}' does not define a global skills directory"
@@ -59,56 +64,15 @@ def resolve_skills_target_dir(
             candidate = Path(global_dir)
             target = candidate if candidate.is_absolute() else Path.home() / candidate
     else:
-        if project_path is None:
-            raise ValidationError("project_path required for local installation")
         if project_dir is None:
             raise ValidationError(
                 f"agent '{agent}' does not support project-level installation; "
                 f"use --global"
             )
-        target = project_path / project_dir
+        target = Path(project).resolve() / project_dir
 
     target.mkdir(parents=True, exist_ok=True)
     return target
-
-
-def resolve_command_target_dir(
-    *,
-    is_global: bool,
-    project: str,
-    agent: str = "claude",
-    agent_overrides: Mapping[str, AgentDirOverride] | None = None,
-) -> Path:
-    """Resolve the target skills directory for a command invocation.
-
-    Wraps resolve_skills_target_dir() with the --global/project/agent flag
-    shape shared by install/update/remove/mklink.
-
-    Args:
-        is_global: If True, resolve the agent's global skills dir
-            (project is ignored).
-        project: Project path string (used when is_global is False).
-        agent: Agent name (default "claude").
-        agent_overrides: Config [agents] table, or None for builtin-only
-            resolution (used by mklink).
-
-    Returns:
-        Resolved target skills directory path.
-
-    Raises:
-        ValidationError: Propagated from resolve_skills_target_dir for
-            unknown agents, missing project scope, or invalid overrides.
-    """
-    if is_global:
-        return resolve_skills_target_dir(
-            global_flag=True, agent=agent, agent_overrides=agent_overrides
-        )
-    return resolve_skills_target_dir(
-        global_flag=False,
-        project_path=Path(project).resolve(),
-        agent=agent,
-        agent_overrides=agent_overrides,
-    )
 
 
 def update_skill_copy(
