@@ -5,6 +5,7 @@ __all__ = ["list_skills", "list_skills_cmd"]
 import click
 
 from dl_skills_manager.core.config import SkillSyncConfig, load_config
+from dl_skills_manager.core.store import SkillsStore
 from dl_skills_manager.core.types import SkillInfo
 
 
@@ -19,51 +20,7 @@ def list_skills(config: SkillSyncConfig | None = None) -> list[SkillInfo]:
     """
     if config is None:
         config = load_config()
-    skills_store = config.skills_store
-    if not skills_store.exists():
-        return []
-
-    skills_subdir = skills_store / "skills"
-    if not skills_subdir.exists():
-        return []
-
-    bk_dir = skills_store / ".bk"
-    history_map: dict[str, list[str]] = {}
-    skills: list[SkillInfo] = []
-
-    # Scan .bk for history versions first
-    if bk_dir.exists():
-        for bk_item in sorted(bk_dir.iterdir()):
-            if not bk_item.is_dir():
-                continue
-            if "@" in bk_item.name:
-                skill_name, version = bk_item.name.split("@", 1)
-                if skill_name not in history_map:
-                    history_map[skill_name] = []
-                history_map[skill_name].append(version)
-
-    # Scan skills/ subdirectory for valid skills
-    for skill_dir in sorted(skills_subdir.iterdir()):
-        if not skill_dir.is_dir():
-            continue
-
-        # Only directories containing SKILL.md are considered skills
-        if not (skill_dir / "SKILL.md").exists():
-            continue
-
-        skill_name = skill_dir.name
-
-        # Get history from .bk
-        history = sorted(history_map.get(skill_name, []), reverse=True)
-
-        skills.append(
-            SkillInfo(
-                name=skill_name,
-                history=tuple(history),
-            )
-        )
-
-    return skills
+    return SkillsStore(config.skills_store).list_skills()
 
 
 @click.command()

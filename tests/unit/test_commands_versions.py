@@ -64,10 +64,6 @@ class TestVersionsCommand:
                 "dl_skills_manager.core.commands.versions.load_config",
                 return_value=mock_config(repo_with_versions),
             ),
-            patch(
-                "dl_skills_manager.core.commands._shared.load_config",
-                return_value=mock_config(repo_with_versions),
-            ),
         ):
             result = cli_runner.invoke(main, ["versions", "test-skill"])
 
@@ -86,10 +82,6 @@ class TestVersionsCommand:
                 "dl_skills_manager.core.commands.versions.load_config",
                 return_value=mock_config(repo_with_versions),
             ),
-            patch(
-                "dl_skills_manager.core.commands._shared.load_config",
-                return_value=mock_config(repo_with_versions),
-            ),
         ):
             result = cli_runner.invoke(main, ["versions", "test-skill"])
 
@@ -102,10 +94,6 @@ class TestVersionsCommand:
         with (
             patch(
                 "dl_skills_manager.core.commands.versions.load_config",
-                return_value=mock_config(repo_with_versions),
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.load_config",
                 return_value=mock_config(repo_with_versions),
             ),
         ):
