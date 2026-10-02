@@ -9,7 +9,6 @@ from test_helpers import mock_config
 from dl_skills_manager.cli import main
 from dl_skills_manager.core.agents import AgentDirOverride
 from dl_skills_manager.core.commands.install import install_skill
-from dl_skills_manager.core.config import LinkMode
 from dl_skills_manager.core.exceptions import (
     SkillNotFoundError,
     ValidationError,
@@ -18,6 +17,8 @@ from dl_skills_manager.core.exceptions import (
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
+
+    from dl_skills_manager.core.config import LinkMode
 
 
 @pytest.fixture

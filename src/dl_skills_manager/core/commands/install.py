@@ -92,7 +92,7 @@ def install(
 
     Supports --agent to target non-Claude agent skills directories.
     """
-    reject_global_with_project(is_global, project)
+    reject_global_with_project(is_global=is_global, project=project)
 
     # Parse name@version syntax
     version: str | None = None

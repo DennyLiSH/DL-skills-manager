@@ -87,7 +87,7 @@ def mklink(
     Use --prefix to namespace linked skills (e.g. --prefix gstack-).
     Use --global to link to ~/.claude/skills/ instead.
     """
-    reject_global_with_project(is_global, project)
+    reject_global_with_project(is_global=is_global, project=project)
 
     source_dir = Path(source_path).resolve()
 

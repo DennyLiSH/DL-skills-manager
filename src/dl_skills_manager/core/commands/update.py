@@ -83,7 +83,7 @@ def update(name: str, project: str, *, is_global: bool, agent: str) -> None:
     installed as a symlink, the update is skipped since the symlink already
     points to the latest repository source.
     """
-    reject_global_with_project(is_global, project)
+    reject_global_with_project(is_global=is_global, project=project)
 
     config = load_config()
 

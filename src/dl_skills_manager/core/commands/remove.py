@@ -68,7 +68,7 @@ def remove(name: str, project: str, *, is_global: bool, agent: str) -> None:
     Requires an initialized skill-sync repository: remove reads
     config.toml for [agents] overrides and fails when it is missing.
     """
-    reject_global_with_project(is_global, project)
+    reject_global_with_project(is_global=is_global, project=project)
 
     config = load_config()
 

@@ -45,7 +45,7 @@ def target_options(
     return decorator
 
 
-def reject_global_with_project(is_global: bool, project: str) -> None:
+def reject_global_with_project(*, is_global: bool, project: str) -> None:
     """Raise UsageError when --global is combined with a PROJECT path."""
     if is_global and project != ".":
         raise click.UsageError("Cannot specify both --global and a PROJECT path.")
