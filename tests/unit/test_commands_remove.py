@@ -82,7 +82,7 @@ class TestRemoveSkillCore:
         assert not skill.exists()
 
     def test_removes_agent_global_codex(self, fake_home: Path) -> None:
-        """--global × --agent codex combination (replaces the dropped
+        """--global x --agent codex combination (replaces the dropped
         legacy test_remove_agent_codex_global)."""
         skill = _install_skill(fake_home, ".agents")
 
@@ -189,15 +189,11 @@ class TestRemoveCli:
         project = tmp_path / "proj"
         project.mkdir()
 
-        result = cli_runner.invoke(
-            main, ["remove", "nonexistent-skill", str(project)]
-        )
+        result = cli_runner.invoke(main, ["remove", "nonexistent-skill", str(project)])
 
         assert "not installed" in result.output.lower()
 
-    def test_cli_global(
-        self, cli_runner: CliRunner, repo_home: Path
-    ) -> None:
+    def test_cli_global(self, cli_runner: CliRunner, repo_home: Path) -> None:
         skill = _install_skill(repo_home.parent)
 
         result = cli_runner.invoke(main, ["remove", "--global", "test-skill"])

@@ -102,8 +102,10 @@ def update(name: str, project: str, *, is_global: bool, agent: str) -> None:
     )
 
     if outcome.skipped:
-        assert outcome.symlink_target is not None
-        click.echo(f"Skill '{name}' is installed as symlink -> {outcome.symlink_target}")
+        assert outcome.symlink_target is not None  # noqa: S101
+        click.echo(
+            f"Skill '{name}' is installed as symlink -> {outcome.symlink_target}"
+        )
         click.echo("No update needed — symlink points directly to repository source.")
         reinstall_flags: list[str] = []
         if is_global:

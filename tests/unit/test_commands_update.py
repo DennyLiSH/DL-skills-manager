@@ -119,9 +119,10 @@ class TestUpdateSkillCore:
         outcome = _update(repo_with_skill, project=str(project_dir))
 
         assert outcome.skipped is True
-        assert outcome.symlink_target == (
-            repo_with_skill / "data" / "skills" / "test-skill"
-        ).resolve()
+        assert (
+            outcome.symlink_target
+            == (repo_with_skill / "data" / "skills" / "test-skill").resolve()
+        )
         assert link.is_symlink()
 
     def test_agent_pi_project_recopies(
@@ -129,9 +130,7 @@ class TestUpdateSkillCore:
     ) -> None:
         old = _install_old_copy(project_dir, ".pi")
 
-        outcome = _update(
-            repo_with_skill, project=str(project_dir), agent="pi"
-        )
+        outcome = _update(repo_with_skill, project=str(project_dir), agent="pi")
 
         assert outcome.skipped is False
         assert (old / "SKILL.md").read_text() == "# Test Skill\n"

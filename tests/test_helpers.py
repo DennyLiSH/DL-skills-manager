@@ -1,9 +1,12 @@
 """Test helper utilities shared across test modules."""
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from dl_skills_manager.core.agents import AgentDirOverride
 from dl_skills_manager.core.config import LinkMode, SkillSyncConfig
+
+if TYPE_CHECKING:
+    from dl_skills_manager.core.agents import AgentDirOverride
 
 
 def mock_config(

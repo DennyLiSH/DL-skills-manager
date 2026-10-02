@@ -73,7 +73,9 @@ class TestInstallSkillCore:
         assert not dest.is_symlink()
         assert (dest / "SKILL.md").read_text() == "# Test Skill\n"
 
-    def test_install_nonexistent_skill(self, repo_with_skill: Path, project_dir: Path) -> None:
+    def test_install_nonexistent_skill(
+        self, repo_with_skill: Path, project_dir: Path
+    ) -> None:
         with pytest.raises(SkillNotFoundError, match="not found in repository"):
             _install(repo_with_skill, name="nonexistent", project=str(project_dir))
 
@@ -94,9 +96,7 @@ class TestInstallSkillCore:
         self, repo_with_skill: Path, project_dir: Path
     ) -> None:
         with pytest.raises(VersionNotFoundError, match="not found for skill"):
-            _install(
-                repo_with_skill, version="v2099.99.99", project=str(project_dir)
-            )
+            _install(repo_with_skill, version="v2099.99.99", project=str(project_dir))
 
     def test_install_overwrites_existing_copy(
         self, repo_with_skill: Path, project_dir: Path
@@ -211,9 +211,7 @@ class TestInstallSkillCore:
     ) -> None:
         """--link-mode symlink routes to create_link (symlink or Windows
         copy fallback — both prove the symlink branch was taken)."""
-        dest = _install(
-            repo_with_skill, project=str(project_dir), link_mode="symlink"
-        )
+        dest = _install(repo_with_skill, project=str(project_dir), link_mode="symlink")
         assert (dest / "SKILL.md").read_text() == "# Test Skill\n"
 
     def test_install_link_mode_copy_override_replaces_symlink_config(
@@ -275,11 +273,10 @@ class TestInstallCli:
 
         assert result.exit_code == 0, result.output
         assert "v2026.03.22" in result.output
-        assert (project / ".claude" / "skills" / "test-skill" / "SKILL.md").read_text() == "# Old Version\n"
+        installed = project / ".claude" / "skills" / "test-skill" / "SKILL.md"
+        assert installed.read_text() == "# Old Version\n"
 
-    def test_cli_install_global(
-        self, cli_runner: CliRunner, repo_home: Path
-    ) -> None:
+    def test_cli_install_global(self, cli_runner: CliRunner, repo_home: Path) -> None:
         skill = repo_home / "data" / "skills" / "test-skill"
         skill.mkdir()
         (skill / "SKILL.md").write_text("# Test Skill\n")

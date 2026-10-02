@@ -27,9 +27,7 @@ class TestResolveCommandTargetDir:
         assert result.exists()
 
     def test_agent_global(self, fake_home: Path) -> None:
-        result = resolve_command_target_dir(
-            is_global=True, project=".", agent="codex"
-        )
+        result = resolve_command_target_dir(is_global=True, project=".", agent="codex")
         assert result == fake_home / ".agents" / "skills"
         assert result.is_dir()
 
@@ -99,9 +97,7 @@ class TestResolveCommandTargetDir:
         with pytest.raises(ValidationError, match="Unknown agent"):
             resolve_command_target_dir(is_global=True, project=".", agent="nope")
 
-    def test_custom_agent_global_only_project_raises(
-        self, tmp_path: Path
-    ) -> None:
+    def test_custom_agent_global_only_project_raises(self, tmp_path: Path) -> None:
         project = tmp_path / "proj"
         project.mkdir()
         with pytest.raises(ValidationError, match="does not support"):
