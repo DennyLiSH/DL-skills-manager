@@ -1,11 +1,11 @@
-"""Unit tests for resolve_command_target_dir."""
+"""Unit tests for resolve_command_target_dir (targets module)."""
 
 from pathlib import Path
 
 import pytest
 
 from dl_skills_manager.core.agents import AgentDirOverride
-from dl_skills_manager.core.commands._shared import resolve_command_target_dir
+from dl_skills_manager.core.commands.targets import resolve_command_target_dir
 from dl_skills_manager.core.exceptions import ValidationError
 
 

@@ -10,7 +10,7 @@ from dl_skills_manager.core.commands._options import (
     reject_global_with_project,
     target_options,
 )
-from dl_skills_manager.core.commands._shared import resolve_command_target_dir
+from dl_skills_manager.core.commands.targets import resolve_command_target_dir
 from dl_skills_manager.core.config import LinkMode, SkillSyncConfig, load_config
 from dl_skills_manager.core.linker import copy_skill_dir, create_link
 from dl_skills_manager.core.store import SkillsStore

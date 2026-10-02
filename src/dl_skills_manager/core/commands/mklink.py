@@ -8,7 +8,7 @@ from dl_skills_manager.core.commands._options import (
     reject_global_with_project,
     target_options,
 )
-from dl_skills_manager.core.commands._shared import resolve_command_target_dir
+from dl_skills_manager.core.commands.targets import resolve_command_target_dir
 from dl_skills_manager.core.linker import create_link
 from dl_skills_manager.core.store import is_skill_dir, validate_skill_name
 

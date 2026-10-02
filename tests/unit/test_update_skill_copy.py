@@ -1,8 +1,8 @@
-"""Unit tests for update_skill_copy."""
+"""Tests for update_skill_copy."""
 
 from pathlib import Path
 
-from dl_skills_manager.core.commands._shared import update_skill_copy
+from dl_skills_manager.core.commands.targets import update_skill_copy
 
 
 class TestUpdateSkillCopy:
