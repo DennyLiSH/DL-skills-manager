@@ -2,11 +2,15 @@
 
 __all__ = ["list_skills", "list_skills_cmd"]
 
+from typing import TYPE_CHECKING
+
 import click
 
 from dl_skills_manager.core.config import SkillSyncConfig, load_config
 from dl_skills_manager.core.store import SkillsStore
-from dl_skills_manager.core.types import SkillInfo
+
+if TYPE_CHECKING:
+    from dl_skills_manager.core.types import SkillInfo
 
 
 def list_skills(config: SkillSyncConfig | None = None) -> list[SkillInfo]:

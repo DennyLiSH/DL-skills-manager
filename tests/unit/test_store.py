@@ -149,9 +149,7 @@ class TestNextBackupVersion:
         store.backup_dir("dev-skill", "v2026.03.23.1").mkdir()
         assert store.next_backup_version("dev-skill") == "v2026.03.23.2"
 
-    def test_dev_suffix_version_ignored_for_collision(
-        self, store: SkillsStore
-    ) -> None:
+    def test_dev_suffix_version_ignored_for_collision(self, store: SkillsStore) -> None:
         dev_file = store.dev_dir("dev-skill") / "SKILL.md"
         self._pin_mtime(dev_file, datetime(2026, 3, 23, 12, 0, tzinfo=UTC))
         store.backup_dir("dev-skill", "v2026.03.23-dev").mkdir(parents=True)
@@ -159,9 +157,7 @@ class TestNextBackupVersion:
 
 
 class TestPromote:
-    def test_promote_copies_to_production_and_backup(
-        self, store: SkillsStore
-    ) -> None:
+    def test_promote_copies_to_production_and_backup(self, store: SkillsStore) -> None:
         result = store.promote("dev-skill")
         target = store.skills_dir() / "dev-skill"
         assert result.target == target
@@ -170,9 +166,7 @@ class TestPromote:
         assert (result.backup / "SKILL.md").exists()
         assert result.version.startswith("v")
 
-    def test_promote_overwrites_existing_production(
-        self, store: SkillsStore
-    ) -> None:
+    def test_promote_overwrites_existing_production(self, store: SkillsStore) -> None:
         target = store.skills_dir() / "dev-skill"
         target.mkdir(parents=True)
         (target / "SKILL.md").write_text("# Old\n")
@@ -183,9 +177,7 @@ class TestPromote:
         with pytest.raises(SkillNotFoundError, match=r"not found in \.dev/"):
             store.promote("nonexistent")
 
-    def test_promote_dev_without_skill_marker(
-        self, tmp_path: Path
-    ) -> None:
+    def test_promote_dev_without_skill_marker(self, tmp_path: Path) -> None:
         s = SkillsStore(tmp_path)
         dev = s.dev_dir("markerless")
         dev.mkdir(parents=True)

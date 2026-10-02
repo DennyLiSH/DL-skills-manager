@@ -144,9 +144,7 @@ class SkillsStore:
         backup = self.backup_dir(name, version)
         if backup.exists():
             return backup
-        raise VersionNotFoundError(
-            f"Version '{version}' not found for skill '{name}'"
-        )
+        raise VersionNotFoundError(f"Version '{version}' not found for skill '{name}'")
 
     def list_backups(self, name: str) -> list[str]:
         """Version strings of a skill's backups, newest first."""
