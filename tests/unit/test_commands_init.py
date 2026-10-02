@@ -1,13 +1,54 @@
-"""Tests for init command."""
+"""Tests for init command (core function + CLI adapter)."""
 
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+import pytest
+
 from dl_skills_manager.cli import main
+from dl_skills_manager.core.commands.init import InitResult, init_repo
+from dl_skills_manager.core.exceptions import RepoAlreadyExistsError
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
+
+
+class TestInitRepoCore:
+    """Core function tests: explicit repo_path, no patches."""
+
+    def test_creates_default_layout(self, tmp_path: Path) -> None:
+        repo = tmp_path / ".skill-sync"
+
+        result = init_repo(skills_path=None, link_mode="copy", repo_path=repo)
+
+        assert isinstance(result, InitResult)
+        assert (repo / "config.toml").exists()
+        for sub in ("skills", ".dev", ".bk", "agents"):
+            assert (repo / "data" / sub).is_dir()
+        assert (repo / "data" / ".claude-plugin" / "marketplace.json").exists()
+        assert result.repo_path == repo
+        assert result.skills_store == repo / "data"
+
+    def test_custom_skills_path(self, tmp_path: Path) -> None:
+        custom = tmp_path / "custom-store"
+
+        result = init_repo(
+            skills_path=str(custom),
+            link_mode="copy",
+            repo_path=tmp_path / ".skill-sync",
+        )
+
+        assert (custom / "skills").is_dir()
+        assert (custom / ".claude-plugin" / "marketplace.json").exists()
+        assert result.skills_store == custom
+
+    def test_already_initialized_raises(self, tmp_path: Path) -> None:
+        repo = tmp_path / ".skill-sync"
+        init_repo(skills_path=None, link_mode="copy", repo_path=repo)
+
+        with pytest.raises(RepoAlreadyExistsError, match="already initialized"):
+            init_repo(skills_path=None, link_mode="copy", repo_path=repo)
 
 
 class TestInitCommand:
