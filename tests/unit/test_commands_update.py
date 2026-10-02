@@ -70,10 +70,6 @@ class TestUpdateCommand:
                 "dl_skills_manager.core.commands.update.load_config",
                 return_value=mock_cfg,
             ),
-            patch(
-                "dl_skills_manager.core.commands._shared.load_config",
-                return_value=mock_cfg,
-            ),
         ):
             result = cli_runner.invoke(
                 main,
@@ -94,10 +90,6 @@ class TestUpdateCommand:
         with (
             patch(
                 "dl_skills_manager.core.commands.update.load_config",
-                return_value=mock_cfg,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.load_config",
                 return_value=mock_cfg,
             ),
         ):
@@ -125,10 +117,6 @@ class TestUpdateCommand:
         with (
             patch(
                 "dl_skills_manager.core.commands.update.load_config",
-                return_value=mock_cfg,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.load_config",
                 return_value=mock_cfg,
             ),
             patch(
@@ -299,10 +287,6 @@ class TestUpdateSymlinkSkip:
                 "dl_skills_manager.core.commands.update.load_config",
                 return_value=mock_cfg,
             ),
-            patch(
-                "dl_skills_manager.core.commands._shared.load_config",
-                return_value=mock_cfg,
-            ),
             # Mock is_symlink to return True for the skill path
             patch.object(Path, "is_symlink", return_value=True),
         ):
@@ -328,10 +312,6 @@ class TestUpdateSymlinkSkip:
                 "dl_skills_manager.core.commands.update.load_config",
                 return_value=mock_cfg,
             ),
-            patch(
-                "dl_skills_manager.core.commands._shared.load_config",
-                return_value=mock_cfg,
-            ),
             patch.object(Path, "is_symlink", return_value=True),
         ):
             result = cli_runner.invoke(main, ["update", "test-skill", str(project_dir)])
@@ -355,10 +335,6 @@ class TestUpdateSymlinkSkip:
         with (
             patch(
                 "dl_skills_manager.core.commands.update.load_config",
-                return_value=mock_cfg,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.load_config",
                 return_value=mock_cfg,
             ),
             patch(
@@ -389,10 +365,6 @@ class TestUpdateSymlinkSkip:
                 "dl_skills_manager.core.commands.update.load_config",
                 return_value=mock_cfg,
             ),
-            patch(
-                "dl_skills_manager.core.commands._shared.load_config",
-                return_value=mock_cfg,
-            ),
             patch.object(Path, "is_symlink", return_value=True),
         ):
             result = cli_runner.invoke(
@@ -418,10 +390,6 @@ class TestUpdateSymlinkSkip:
         with (
             patch(
                 "dl_skills_manager.core.commands.update.load_config",
-                return_value=mock_cfg,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.load_config",
                 return_value=mock_cfg,
             ),
         ):

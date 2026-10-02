@@ -5,12 +5,11 @@ __all__ = ["update"]
 import click
 
 from dl_skills_manager.core.commands._shared import (
-    find_skill_dir,
-    find_version_dir,
     resolve_command_target_dir,
     update_skill_copy,
 )
 from dl_skills_manager.core.config import load_config
+from dl_skills_manager.core.store import SkillsStore
 
 
 @click.command()
@@ -51,8 +50,7 @@ def update(name: str, project: str, *, is_global: bool, agent: str) -> None:
     )
 
     # Find skill and version directories (update always uses stable/latest)
-    skill_dir = find_skill_dir(name, config=config)
-    version_dir = find_version_dir(skill_dir, version=None)
+    version_dir = SkillsStore(config.skills_store).find_version(name)
 
     # Check if skill is installed as symlink — skip update
     project_skill_link = target_skills_dir / name

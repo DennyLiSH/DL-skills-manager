@@ -4,14 +4,10 @@ __all__ = ["install"]
 
 import click
 
-from dl_skills_manager.core.commands._shared import (
-    find_skill_dir,
-    find_version_dir,
-    resolve_command_target_dir,
-    validate_skill_name,
-)
+from dl_skills_manager.core.commands._shared import resolve_command_target_dir
 from dl_skills_manager.core.config import load_config
 from dl_skills_manager.core.linker import copy_skill_dir, create_link
+from dl_skills_manager.core.store import SkillsStore, validate_skill_name
 
 
 @click.command()
@@ -75,8 +71,8 @@ def install(
     effective_mode = link_mode or "copy"
 
     # Find skill and version directories with validation
-    skill_dir = find_skill_dir(name, config=config)
-    version_dir = find_version_dir(skill_dir, version=version)
+    store = SkillsStore(config.skills_store)
+    version_dir = store.find_version(name, version)
 
     # Resolve target skills directory
     target_skills_dir = resolve_command_target_dir(
