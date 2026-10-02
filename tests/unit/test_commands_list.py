@@ -1,11 +1,8 @@
-"""Tests for list command."""
+"""Tests for list command (core function + CLI adapter)."""
 
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import patch
 
-import pytest
-import tomli_w
 from test_helpers import mock_config
 
 from dl_skills_manager.cli import main
@@ -15,91 +12,44 @@ if TYPE_CHECKING:
     from click.testing import CliRunner
 
 
-@pytest.fixture
-def initialized_repo(tmp_path: Path) -> Path:
-    """Create an initialized repository with some skills."""
-    config_dir = tmp_path / ".skill-sync"
-    config_dir.mkdir()
-    data_dir = config_dir / "data"
-    data_dir.mkdir()
-    skills_subdir = data_dir / "skills"
-    skills_subdir.mkdir()
-
-    # Create config.toml
-    config_path = config_dir / "config.toml"
-    with config_path.open("wb") as f:
-        tomli_w.dump(
-            {
-                "basic": {"path": str(config_dir), "skills_store": str(data_dir)},
-                "settings": {"default_link_mode": "copy"},
-            },
-            f,
-        )
-
-    # Create a test skill (must contain SKILL.md to be recognized)
-    skill_dir = skills_subdir / "test-skill"
-    skill_dir.mkdir()
-    (skill_dir / "SKILL.md").write_text("# Test Skill\n")
-
-    # Create a history version in .bk
-    bk_dir = data_dir / ".bk"
-    bk_dir.mkdir()
-    bk_skill_dir = bk_dir / "test-skill@v2026.03.22"
-    bk_skill_dir.mkdir()
-    (bk_skill_dir / "SKILL.md").write_text("# Test Skill Old\n")
-
-    return config_dir
+def _seed_skill_with_history(repo: Path) -> None:
+    skill = repo / "data" / "skills" / "test-skill"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text("# Test Skill\n")
+    bk = repo / "data" / ".bk" / "test-skill@v2026.03.22"
+    bk.mkdir(parents=True)
+    (bk / "SKILL.md").write_text("# Test Skill Old\n")
 
 
-class TestListSkills:
-    """Tests for list_skills function."""
+class TestListSkillsCore:
+    """Core function tests: real config objects, no patches."""
 
-    def test_list_skills_empty(self, tmp_path: Path) -> None:
-        """Test list_skills returns empty list when no skills."""
-        config_dir = tmp_path / ".skill-sync"
-        config_dir.mkdir()
-        data_dir = config_dir / "data"
-        data_dir.mkdir()
+    def test_list_skills_empty(self, repo_home: Path) -> None:
+        assert list_skills(mock_config(repo_home)) == []
 
-        skills = list_skills(mock_config(config_dir))
-        assert skills == []
+    def test_list_skills_with_history(self, repo_home: Path) -> None:
+        _seed_skill_with_history(repo_home)
 
-    def test_list_skills_with_skills(self, initialized_repo: Path) -> None:
-        """Test list_skills returns skills info."""
-        skills = list_skills(mock_config(initialized_repo))
+        skills = list_skills(mock_config(repo_home))
+
         assert len(skills) == 1
         assert skills[0].name == "test-skill"
         assert skills[0].history == ("v2026.03.22",)
 
 
 class TestListCommand:
-    """Tests for list CLI command."""
+    """CLI adapter tests: real config via repo_home/fake_home, no patches."""
 
-    def test_list_no_repo(self, cli_runner: CliRunner, tmp_path: Path) -> None:
-        """Test list with non-existent config."""
-        config_dir = tmp_path / ".skill-sync"
-        config_dir.mkdir()
-        (config_dir / "data").mkdir()
-        # No config.toml → load_config will fail
-
-        with patch(
-            "dl_skills_manager.core.config.get_default_repo_path",
-            return_value=config_dir,
-        ):
-            result = cli_runner.invoke(main, ["list"])
+    def test_list_no_repo(self, cli_runner: CliRunner, fake_home: Path) -> None:
+        """No config.toml under the fake home → ConfigError, exit 1."""
+        result = cli_runner.invoke(main, ["list"])
         assert result.exit_code == 1
 
-    def test_list_with_skills(
-        self, cli_runner: CliRunner, initialized_repo: Path
-    ) -> None:
-        """Test list shows skills."""
-        mock_cfg = mock_config(initialized_repo)
-        with patch(
-            "dl_skills_manager.core.commands.list.load_config",
-            return_value=mock_cfg,
-        ):
-            result = cli_runner.invoke(main, ["list"])
+    def test_list_with_skills(self, cli_runner: CliRunner, repo_home: Path) -> None:
+        _seed_skill_with_history(repo_home)
 
-        assert result.exit_code == 0
+        result = cli_runner.invoke(main, ["list"])
+
+        assert result.exit_code == 0, result.output
         assert "test-skill" in result.output
         assert "1 history" in result.output

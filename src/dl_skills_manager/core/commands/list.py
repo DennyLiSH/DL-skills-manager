@@ -13,17 +13,15 @@ if TYPE_CHECKING:
     from dl_skills_manager.core.types import SkillInfo
 
 
-def list_skills(config: SkillSyncConfig | None = None) -> list[SkillInfo]:
+def list_skills(config: SkillSyncConfig) -> list[SkillInfo]:
     """List all skills in the repository.
 
     Args:
-        config: Pre-loaded config; loads from disk when omitted.
+        config: Pre-loaded repository config.
 
     Returns:
         List of skill information objects.
     """
-    if config is None:
-        config = load_config()
     return SkillsStore(config.skills_store).list_skills()
 
 
