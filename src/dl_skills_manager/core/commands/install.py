@@ -1,13 +1,65 @@
 """Install skill command."""
 
-__all__ = ["install"]
+__all__ = ["install", "install_skill"]
+
+from pathlib import Path
 
 import click
 
 from dl_skills_manager.core.commands._shared import resolve_command_target_dir
-from dl_skills_manager.core.config import load_config
+from dl_skills_manager.core.config import SkillSyncConfig, load_config
 from dl_skills_manager.core.linker import copy_skill_dir, create_link
 from dl_skills_manager.core.store import SkillsStore, validate_skill_name
+
+
+def install_skill(
+    name: str,
+    *,
+    version: str | None,
+    is_global: bool,
+    project: str,
+    link_mode: str | None,
+    agent: str,
+    config: SkillSyncConfig,
+) -> Path:
+    """Install a skill into the resolved target directory.
+
+    Copy is the default; link_mode="symlink" creates a symlink instead.
+    config.default_link_mode is deliberately not consulted (ADR 0001).
+
+    Args:
+        name: Skill name (validated).
+        version: Optional version to install (None = latest).
+        is_global: Target the agent's global skills dir.
+        project: Project path string (used when is_global is False).
+        link_mode: "symlink" or "copy"; None means copy.
+        agent: Agent name.
+        config: Pre-loaded repository config.
+
+    Returns:
+        Path to the installed skill.
+
+    Raises:
+        SkillNotFoundError: Skill missing from the repository.
+        VersionNotFoundError: Requested version missing.
+        ValidationError: Invalid name/agent/scope.
+        LinkError: Symlink or copy failure.
+    """
+    version_dir = SkillsStore(config.skills_store).find_version(name, version)
+
+    target_skills_dir = resolve_command_target_dir(
+        is_global=is_global,
+        project=project,
+        agent=agent,
+        agent_overrides=config.agent_dirs,
+    )
+    project_skill_path = target_skills_dir / name
+
+    if (link_mode or "copy") == "symlink":
+        create_link(version_dir, project_skill_path, force=True)
+    else:
+        copy_skill_dir(version_dir, project_skill_path, force=True)
+    return project_skill_path
 
 
 @click.command()
@@ -43,18 +95,11 @@ def install(
     """Install a skill into the current project.
 
     Creates a symlink or copies the skill to .claude/skills/{skill_name},
-    depending on config or --link-mode override.
+    depending on --link-mode (copy is the default).
 
     Supports name@version syntax for specifying version directly in the name.
 
     Supports --agent to target non-Claude agent skills directories.
-
-    Args:
-        name: Name of the skill to install (optionally with @version suffix).
-        project: Path to the project directory (default: current directory).
-        is_global: If True, install to ~/.claude/skills/ globally.
-        link_mode: Override the default link mode (force symlink instead of copy).
-        agent: Target agent whose skills directory to install into.
     """
     if is_global and project != ".":
         raise click.UsageError("Cannot specify both --global and a PROJECT path.")
@@ -66,29 +111,16 @@ def install(
 
     validate_skill_name(name)
 
-    # Load config and determine effective link mode
     config = load_config()
-    effective_mode = link_mode or "copy"
-
-    # Find skill and version directories with validation
-    store = SkillsStore(config.skills_store)
-    version_dir = store.find_version(name, version)
-
-    # Resolve target skills directory
-    target_skills_dir = resolve_command_target_dir(
+    dest = install_skill(
+        name,
+        version=version,
         is_global=is_global,
         project=project,
+        link_mode=link_mode,
         agent=agent,
-        agent_overrides=config.agent_dirs,
+        config=config,
     )
 
-    # Create symlink or copy based on effective mode
-    project_skill_path = target_skills_dir / name
-
-    if effective_mode == "symlink":
-        create_link(version_dir, project_skill_path, force=True)
-    else:
-        copy_skill_dir(version_dir, project_skill_path, force=True)
-
     actual_version = version if version else "latest"
-    click.echo(f"Installed {name}@{actual_version} to {project_skill_path}")
+    click.echo(f"Installed {name}@{actual_version} to {dest}")

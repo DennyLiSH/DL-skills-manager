@@ -1,580 +1,316 @@
-"""Tests for install command."""
+"""Tests for install command (core function + CLI adapter)."""
 
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import patch
 
 import pytest
-import tomli_w
+from test_helpers import mock_config
 
 from dl_skills_manager.cli import main
 from dl_skills_manager.core.agents import AgentDirOverride
-from dl_skills_manager.core.config import SkillSyncConfig
+from dl_skills_manager.core.commands.install import install_skill
+from dl_skills_manager.core.exceptions import (
+    SkillNotFoundError,
+    ValidationError,
+    VersionNotFoundError,
+)
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
 
 
-def _make_mock_config(repo_path: Path) -> SkillSyncConfig:
-    return SkillSyncConfig(
-        path=repo_path,
-        skills_store=repo_path / "data",
-        default_link_mode="copy",
-    )
-
-
 @pytest.fixture
 def repo_with_skill(tmp_path: Path) -> Path:
-    """Create an initialized repository with a skill."""
+    """Repository with one production skill and an empty .bk."""
     repo_path = tmp_path / ".skill-sync"
-    repo_path.mkdir()
-    data_dir = repo_path / "data"
-    data_dir.mkdir()
-    skills_subdir = data_dir / "skills"
-    skills_subdir.mkdir()
-
-    # Create config.toml with [basic] section
-    config_path = repo_path / "config.toml"
-    with config_path.open("wb") as f:
-        tomli_w.dump(
-            {
-                "basic": {
-                    "path": str(repo_path),
-                    "skills_store": str(data_dir),
-                },
-                "settings": {
-                    "default_link_mode": "copy",
-                },
-            },
-            f,
-        )
-
-    # Create .bk directory
-    bk_dir = data_dir / ".bk"
-    bk_dir.mkdir()
-
-    # Create a test skill
-    skill_dir = skills_subdir / "test-skill"
+    (repo_path / "data" / "skills").mkdir(parents=True)
+    (repo_path / "data" / ".bk").mkdir()
+    skill_dir = repo_path / "data" / "skills" / "test-skill"
     skill_dir.mkdir()
     (skill_dir / "SKILL.md").write_text("# Test Skill\n")
-
     return repo_path
 
 
 @pytest.fixture
 def project_dir(tmp_path: Path) -> Path:
-    """Create a project directory."""
     project = tmp_path / "my-project"
     project.mkdir()
     return project
 
 
-class TestInstallCommand:
-    """Tests for install command."""
+def _install(
+    repo: Path,
+    *,
+    name: str = "test-skill",
+    version: str | None = None,
+    is_global: bool = False,
+    project: str = ".",
+    link_mode: str | None = None,
+    agent: str = "claude",
+    agent_dirs: dict[str, AgentDirOverride] | None = None,
+) -> Path:
+    """Invoke the core with a real config built from tmp paths."""
+    return install_skill(
+        name,
+        version=version,
+        is_global=is_global,
+        project=project,
+        link_mode=link_mode,
+        agent=agent,
+        config=mock_config(repo, agent_dirs=agent_dirs),
+    )
 
-    def test_install_skill_to_project(
-        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+
+class TestInstallSkillCore:
+    """Core function tests: real config objects, no patches."""
+
+    def test_copy_mode_creates_directory(
+        self, repo_with_skill: Path, project_dir: Path
     ) -> None:
-        """Test installing a skill to a project."""
-        mock_config = _make_mock_config(repo_with_skill)
+        dest = _install(repo_with_skill, project=str(project_dir))
+        assert dest == project_dir / ".claude" / "skills" / "test-skill"
+        assert dest.is_dir()
+        assert not dest.is_symlink()
+        assert (dest / "SKILL.md").read_text() == "# Test Skill\n"
 
-        with patch(
-            "dl_skills_manager.core.commands.install.load_config",
-            return_value=mock_config,
-        ):
-            result = cli_runner.invoke(
-                main,
-                [
-                    "install",
-                    "test-skill",
-                    str(project_dir),
-                ],
-            )
+    def test_install_nonexistent_skill(self, repo_with_skill: Path, project_dir: Path) -> None:
+        with pytest.raises(SkillNotFoundError, match="not found in repository"):
+            _install(repo_with_skill, name="nonexistent", project=str(project_dir))
 
-        assert result.exit_code == 0, result.output
-        assert "Installed test-skill@latest" in result.output
-
-        # Check skill was created
-        skill_link = project_dir / ".claude" / "skills" / "test-skill"
-        assert skill_link.exists()
-
-    def test_install_nonexistent_skill(
-        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    def test_install_with_version_from_bk(
+        self, repo_with_skill: Path, project_dir: Path
     ) -> None:
-        """Test installing a skill that doesn't exist."""
-        mock_config = _make_mock_config(repo_with_skill)
+        bk = repo_with_skill / "data" / ".bk" / "test-skill@v2026.03.22"
+        bk.mkdir()
+        (bk / "SKILL.md").write_text("# Old Version\n")
 
-        with patch(
-            "dl_skills_manager.core.commands.install.load_config",
-            return_value=mock_config,
-        ):
-            result = cli_runner.invoke(
-                main,
-                [
-                    "install",
-                    "nonexistent",
-                    str(project_dir),
-                ],
-            )
+        dest = _install(
+            repo_with_skill, version="v2026.03.22", project=str(project_dir)
+        )
 
-        assert result.exit_code != 0
-        assert "not found" in result.output.lower()
-
-    def test_install_with_version(
-        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
-    ) -> None:
-        """Test installing a specific version from .bk."""
-        # Create a history version in .bk
-        bk_dir = repo_with_skill / "data" / ".bk"
-        bk_version_dir = bk_dir / "test-skill@v2026.03.22"
-        bk_version_dir.mkdir()
-        (bk_version_dir / "SKILL.md").write_text("# Old Version\n")
-
-        mock_config = _make_mock_config(repo_with_skill)
-
-        with patch(
-            "dl_skills_manager.core.commands.install.load_config",
-            return_value=mock_config,
-        ):
-            result = cli_runner.invoke(
-                main,
-                [
-                    "install",
-                    "test-skill@v2026.03.22",
-                    str(project_dir),
-                ],
-            )
-
-        assert result.exit_code == 0, result.output
-        assert "v2026.03.22" in result.output
+        assert (dest / "SKILL.md").read_text() == "# Old Version\n"
 
     def test_install_nonexistent_version(
-        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+        self, repo_with_skill: Path, project_dir: Path
     ) -> None:
-        """Test installing a nonexistent version raises error."""
-        mock_config = _make_mock_config(repo_with_skill)
-
-        with patch(
-            "dl_skills_manager.core.commands.install.load_config",
-            return_value=mock_config,
-        ):
-            result = cli_runner.invoke(
-                main,
-                [
-                    "install",
-                    "test-skill@v2099.99.99",
-                    str(project_dir),
-                ],
+        with pytest.raises(VersionNotFoundError, match="not found for skill"):
+            _install(
+                repo_with_skill, version="v2099.99.99", project=str(project_dir)
             )
 
-        assert result.exit_code != 0
-        assert "not found" in result.output.lower()
-
-    def test_install_global(
-        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+    def test_install_overwrites_existing_copy(
+        self, repo_with_skill: Path, project_dir: Path
     ) -> None:
-        """Test installing a skill globally to ~/.claude/skills/."""
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-        mock_config = _make_mock_config(repo_with_skill)
+        existing = project_dir / ".claude" / "skills" / "test-skill"
+        existing.mkdir(parents=True)
+        (existing / "SKILL.md").write_text("# Old\n")
 
-        with (
-            patch(
-                "dl_skills_manager.core.commands.install.load_config",
-                return_value=mock_config,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.Path.home",
-                return_value=fake_home,
-            ),
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--global", "test-skill"],
-            )
+        _install(repo_with_skill, project=str(project_dir))
 
-        assert result.exit_code == 0, result.output
-        assert "Installed test-skill@latest" in result.output
+        assert (existing / "SKILL.md").read_text() == "# Test Skill\n"
 
-        # Check skill was installed to global location
-        skill_link = fake_home / ".claude" / "skills" / "test-skill"
-        assert skill_link.exists()
-
-    def test_install_global_with_explicit_project_errors(
-        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
-    ) -> None:
-        """Test --global with explicit PROJECT path raises error."""
-        mock_config = _make_mock_config(repo_with_skill)
-
-        with patch(
-            "dl_skills_manager.core.commands.install.load_config",
-            return_value=mock_config,
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--global", "test-skill", str(project_dir)],
-            )
-
-        assert result.exit_code != 0
-        assert "Cannot specify both --global and a PROJECT path" in result.output
+    def test_install_global(self, repo_with_skill: Path, fake_home: Path) -> None:
+        dest = _install(repo_with_skill, is_global=True)
+        assert dest == fake_home / ".claude" / "skills" / "test-skill"
+        assert dest.exists()
 
     def test_install_agent_codex_global(
-        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+        self, repo_with_skill: Path, fake_home: Path
     ) -> None:
-        """--agent codex --global installs to ~/.agents/skills/."""
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-        mock_config = _make_mock_config(repo_with_skill)
-
-        with (
-            patch(
-                "dl_skills_manager.core.commands.install.load_config",
-                return_value=mock_config,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.Path.home",
-                return_value=fake_home,
-            ),
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--global", "--agent", "codex", "test-skill"],
-            )
-
-        assert result.exit_code == 0, result.output
-        assert (fake_home / ".agents" / "skills" / "test-skill").exists()
+        dest = _install(repo_with_skill, is_global=True, agent="codex")
+        assert dest == fake_home / ".agents" / "skills" / "test-skill"
 
     def test_install_agent_pi_project(
-        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+        self, repo_with_skill: Path, project_dir: Path
     ) -> None:
-        """--agent pi installs to <project>/.pi/skills/."""
-        mock_config = _make_mock_config(repo_with_skill)
-
-        with patch(
-            "dl_skills_manager.core.commands.install.load_config",
-            return_value=mock_config,
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--agent", "pi", "test-skill", str(project_dir)],
-            )
-
-        assert result.exit_code == 0, result.output
-        assert (project_dir / ".pi" / "skills" / "test-skill").exists()
+        dest = _install(repo_with_skill, project=str(project_dir), agent="pi")
+        assert dest == project_dir / ".pi" / "skills" / "test-skill"
 
     def test_install_agent_uses_config_override(
-        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+        self, repo_with_skill: Path, fake_home: Path
     ) -> None:
-        """[agents] override in config redirects the target dir."""
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-        mock_config = _make_mock_config(repo_with_skill)
-        mock_config.agent_dirs = {
-            "codex": AgentDirOverride(global_dir="~/.codex/skills")
-        }
-
-        with (
-            patch(
-                "dl_skills_manager.core.commands.install.load_config",
-                return_value=mock_config,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.Path.home",
-                return_value=fake_home,
-            ),
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--global", "--agent", "codex", "test-skill"],
-            )
-
-        assert result.exit_code == 0, result.output
-        assert (fake_home / ".codex" / "skills" / "test-skill").exists()
+        dest = _install(
+            repo_with_skill,
+            is_global=True,
+            agent="codex",
+            agent_dirs={"codex": AgentDirOverride(global_dir="~/.codex/skills")},
+        )
+        assert dest == fake_home / ".codex" / "skills" / "test-skill"
 
     def test_install_agent_zcode_global(
-        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+        self, repo_with_skill: Path, fake_home: Path
     ) -> None:
-        """--agent zcode --global installs to ~/.zcode/skills/."""
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-        mock_config = _make_mock_config(repo_with_skill)
-
-        with (
-            patch(
-                "dl_skills_manager.core.commands.install.load_config",
-                return_value=mock_config,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.Path.home",
-                return_value=fake_home,
-            ),
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--global", "--agent", "zcode", "test-skill"],
-            )
-
-        assert result.exit_code == 0, result.output
-        assert (fake_home / ".zcode" / "skills" / "test-skill").exists()
+        dest = _install(repo_with_skill, is_global=True, agent="zcode")
+        assert dest == fake_home / ".zcode" / "skills" / "test-skill"
 
     def test_install_agent_workbuddy_global(
-        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+        self, repo_with_skill: Path, fake_home: Path
     ) -> None:
-        """--agent workbuddy --global installs to ~/.workbuddy/skills/."""
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-        mock_config = _make_mock_config(repo_with_skill)
-
-        with (
-            patch(
-                "dl_skills_manager.core.commands.install.load_config",
-                return_value=mock_config,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.Path.home",
-                return_value=fake_home,
-            ),
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--global", "--agent", "workbuddy", "test-skill"],
-            )
-
-        assert result.exit_code == 0, result.output
-        assert (fake_home / ".workbuddy" / "skills" / "test-skill").exists()
+        dest = _install(repo_with_skill, is_global=True, agent="workbuddy")
+        assert dest == fake_home / ".workbuddy" / "skills" / "test-skill"
 
     def test_install_custom_agent_from_config(
-        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+        self, repo_with_skill: Path, fake_home: Path
     ) -> None:
-        """Config-defined custom agent (non-builtin name) resolves too."""
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-        mock_config = _make_mock_config(repo_with_skill)
-        mock_config.agent_dirs = {
-            "mytool": AgentDirOverride(global_dir="~/.mytool/skills")
-        }
-
-        with (
-            patch(
-                "dl_skills_manager.core.commands.install.load_config",
-                return_value=mock_config,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.Path.home",
-                return_value=fake_home,
-            ),
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--global", "--agent", "mytool", "test-skill"],
-            )
-
-        assert result.exit_code == 0, result.output
-        assert (fake_home / ".mytool" / "skills" / "test-skill").exists()
+        dest = _install(
+            repo_with_skill,
+            is_global=True,
+            agent="mytool",
+            agent_dirs={"mytool": AgentDirOverride(global_dir="~/.mytool/skills")},
+        )
+        assert dest == fake_home / ".mytool" / "skills" / "test-skill"
 
     def test_install_workbuddy_project_errors(
-        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+        self, repo_with_skill: Path, project_dir: Path
     ) -> None:
-        """workbuddy has no project dir — clear error."""
-        mock_config = _make_mock_config(repo_with_skill)
-
-        with patch(
-            "dl_skills_manager.core.commands.install.load_config",
-            return_value=mock_config,
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--agent", "workbuddy", "test-skill", str(project_dir)],
-            )
-
-        assert result.exit_code != 0
-        assert "--global" in result.output
+        with pytest.raises(ValidationError, match="--global"):
+            _install(repo_with_skill, project=str(project_dir), agent="workbuddy")
 
     def test_install_unknown_agent_errors(
-        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+        self, repo_with_skill: Path, project_dir: Path
     ) -> None:
-        """Unknown agent — error lists available agents."""
-        mock_config = _make_mock_config(repo_with_skill)
-
-        with patch(
-            "dl_skills_manager.core.commands.install.load_config",
-            return_value=mock_config,
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--agent", "nope", "test-skill", str(project_dir)],
-            )
-
-        assert result.exit_code != 0
-        assert "Unknown agent" in result.output
+        with pytest.raises(ValidationError, match="Unknown agent"):
+            _install(repo_with_skill, project=str(project_dir), agent="nope")
 
     def test_install_rejects_bare_tilde_slash_global_dir(
-        self, cli_runner: CliRunner, repo_with_skill: Path, tmp_path: Path
+        self, repo_with_skill: Path, fake_home: Path
     ) -> None:
-        """CLI E2E: [agents] global_dir='~/' fails with a friendly error."""
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-        mock_config = _make_mock_config(repo_with_skill)
-        mock_config.agent_dirs = {"mytool": AgentDirOverride(global_dir="~/")}
-
-        with (
-            patch(
-                "dl_skills_manager.core.commands.install.load_config",
-                return_value=mock_config,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.Path.home",
-                return_value=fake_home,
-            ),
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--global", "--agent", "mytool", "test-skill"],
+        with pytest.raises(ValidationError, match="path under the home directory"):
+            _install(
+                repo_with_skill,
+                is_global=True,
+                agent="mytool",
+                agent_dirs={"mytool": AgentDirOverride(global_dir="~/")},
             )
-
-        assert result.exit_code != 0
-        assert "path under the home directory" in result.output
         assert not (fake_home / "test-skill").exists()
 
-
-class TestInstallLinkMode:
-    """Tests for install command link mode behavior."""
-
-    def test_install_copy_mode_creates_directory(
-        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
-    ) -> None:
-        """Test copy mode creates a regular directory."""
-        mock_config = _make_mock_config(repo_with_skill)
-
-        with patch(
-            "dl_skills_manager.core.commands.install.load_config",
-            return_value=mock_config,
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "test-skill", str(project_dir)],
-            )
-
-        assert result.exit_code == 0, result.output
-        skill_path = project_dir / ".claude" / "skills" / "test-skill"
-        assert skill_path.exists()
-        assert skill_path.is_dir()
-        assert not skill_path.is_symlink()
-
     def test_install_ignores_config_default_link_mode_symlink(
-        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+        self, repo_with_skill: Path, project_dir: Path
     ) -> None:
         """install must NOT honor config.default_link_mode; copy is always the default.
 
         Regression guard: the only test preventing install from re-reading
-        config.default_link_mode. Do not delete or weaken.
+        config.default_link_mode (ADR 0001). Do not delete or weaken.
+        Real-filesystem assertion — no create_link mocking involved.
         """
-        symlink_config = SkillSyncConfig(
-            path=repo_with_skill,
-            skills_store=repo_with_skill / "data",
-            default_link_mode="symlink",
+        config = mock_config(repo_with_skill, default_link_mode="symlink")
+        dest = install_skill(
+            "test-skill",
+            version=None,
+            is_global=False,
+            project=str(project_dir),
+            link_mode=None,
+            agent="claude",
+            config=config,
         )
+        assert dest.is_dir()
+        assert not dest.is_symlink()
 
-        with (
-            patch(
-                "dl_skills_manager.core.commands.install.load_config",
-                return_value=symlink_config,
-            ),
-            patch(
-                "dl_skills_manager.core.commands.install.create_link",
-            ) as mock_create_link,
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "test-skill", str(project_dir)],
-            )
-
-        assert result.exit_code == 0, result.output
-        mock_create_link.assert_not_called()
-
-        skill_path = project_dir / ".claude" / "skills" / "test-skill"
-        assert skill_path.exists()
-        assert skill_path.is_dir()
-        assert not skill_path.is_symlink()
-
-    def test_install_link_mode_cli_override_to_symlink(
-        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
+    def test_install_link_mode_symlink_override(
+        self, repo_with_skill: Path, project_dir: Path
     ) -> None:
-        """Test --link-mode symlink overrides config default (copy)."""
-        mock_config = _make_mock_config(repo_with_skill)
-
-        with (
-            patch(
-                "dl_skills_manager.core.commands.install.load_config",
-                return_value=mock_config,
-            ),
-            patch(
-                "dl_skills_manager.core.commands.install.create_link",
-            ) as mock_create_link,
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--link-mode", "symlink", "test-skill", str(project_dir)],
-            )
-
-        assert result.exit_code == 0, result.output
-        mock_create_link.assert_called_once()
-
-    def test_install_link_mode_cli_override_to_copy(
-        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
-    ) -> None:
-        """Test --link-mode copy overrides config default (symlink).
-
-        Also covers overwrite: an existing old copy is replaced by the
-        repository version via copy_skill_dir(force=True).
-        """
-        symlink_config = SkillSyncConfig(
-            path=repo_with_skill,
-            skills_store=repo_with_skill / "data",
-            default_link_mode="symlink",
+        """--link-mode symlink routes to create_link (symlink or Windows
+        copy fallback — both prove the symlink branch was taken)."""
+        dest = _install(
+            repo_with_skill, project=str(project_dir), link_mode="symlink"
         )
+        assert (dest / "SKILL.md").read_text() == "# Test Skill\n"
 
+    def test_install_link_mode_copy_override_replaces_symlink_config(
+        self, repo_with_skill: Path, project_dir: Path
+    ) -> None:
         existing = project_dir / ".claude" / "skills" / "test-skill"
         existing.mkdir(parents=True)
         (existing / "SKILL.md").write_text("# Old Version\n")
 
-        with patch(
-            "dl_skills_manager.core.commands.install.load_config",
-            return_value=symlink_config,
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--link-mode", "copy", "test-skill", str(project_dir)],
-            )
-
-        assert result.exit_code == 0, result.output
-        assert (existing / "SKILL.md").read_text() == "# Test Skill\n"
-        assert existing.is_dir()
-        assert not existing.is_symlink()
-
-    def test_install_symlink_config_with_cli_symlink_override(
-        self, cli_runner: CliRunner, repo_with_skill: Path, project_dir: Path
-    ) -> None:
-        """--link-mode symlink routes to create_link regardless of config."""
-        symlink_config = SkillSyncConfig(
-            path=repo_with_skill,
-            skills_store=repo_with_skill / "data",
-            default_link_mode="symlink",
+        config = mock_config(repo_with_skill, default_link_mode="symlink")
+        dest = install_skill(
+            "test-skill",
+            version=None,
+            is_global=False,
+            project=str(project_dir),
+            link_mode="copy",
+            agent="claude",
+            config=config,
         )
 
-        with (
-            patch(
-                "dl_skills_manager.core.commands.install.load_config",
-                return_value=symlink_config,
-            ),
-            patch(
-                "dl_skills_manager.core.commands.install.create_link",
-            ) as mock_create_link,
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--link-mode", "symlink", "test-skill", str(project_dir)],
-            )
+        assert (dest / "SKILL.md").read_text() == "# Test Skill\n"
+        assert dest.is_dir()
+        assert not dest.is_symlink()
+
+
+class TestInstallCli:
+    """CLI adapter tests: real config via repo_home, no patches."""
+
+    def test_cli_install_to_project(
+        self, cli_runner: CliRunner, repo_home: Path, tmp_path: Path
+    ) -> None:
+        project = tmp_path / "proj"
+        project.mkdir()
+        skill = repo_home / "data" / "skills" / "test-skill"
+        skill.mkdir()
+        (skill / "SKILL.md").write_text("# Test Skill\n")
+
+        result = cli_runner.invoke(main, ["install", "test-skill", str(project)])
 
         assert result.exit_code == 0, result.output
-        mock_create_link.assert_called_once()
+        assert "Installed test-skill@latest" in result.output
+        assert (project / ".claude" / "skills" / "test-skill").exists()
+
+    def test_cli_install_with_version(
+        self, cli_runner: CliRunner, repo_home: Path, tmp_path: Path
+    ) -> None:
+        project = tmp_path / "proj"
+        project.mkdir()
+        skill = repo_home / "data" / "skills" / "test-skill"
+        skill.mkdir()
+        (skill / "SKILL.md").write_text("# Test Skill\n")
+        bk = repo_home / "data" / ".bk" / "test-skill@v2026.03.22"
+        bk.mkdir()
+        (bk / "SKILL.md").write_text("# Old Version\n")
+
+        result = cli_runner.invoke(
+            main, ["install", "test-skill@v2026.03.22", str(project)]
+        )
+
+        assert result.exit_code == 0, result.output
+        assert "v2026.03.22" in result.output
+        assert (project / ".claude" / "skills" / "test-skill" / "SKILL.md").read_text() == "# Old Version\n"
+
+    def test_cli_install_global(
+        self, cli_runner: CliRunner, repo_home: Path
+    ) -> None:
+        skill = repo_home / "data" / "skills" / "test-skill"
+        skill.mkdir()
+        (skill / "SKILL.md").write_text("# Test Skill\n")
+
+        result = cli_runner.invoke(main, ["install", "--global", "test-skill"])
+
+        assert result.exit_code == 0, result.output
+        assert "Installed test-skill@latest" in result.output
+        assert (repo_home.parent / ".claude" / "skills" / "test-skill").exists()
+
+    def test_cli_install_nonexistent_skill(
+        self, cli_runner: CliRunner, repo_home: Path, tmp_path: Path
+    ) -> None:
+        project = tmp_path / "proj"
+        project.mkdir()
+
+        result = cli_runner.invoke(main, ["install", "nonexistent", str(project)])
+
+        assert result.exit_code != 0
+        assert "not found" in result.output.lower()
+
+    def test_cli_global_with_explicit_project_errors(
+        self, cli_runner: CliRunner, tmp_path: Path
+    ) -> None:
+        """UsageError fires in the adapter before any config access."""
+        project = tmp_path / "proj"
+        project.mkdir()
+
+        result = cli_runner.invoke(
+            main, ["install", "--global", "test-skill", str(project)]
+        )
+
+        assert result.exit_code != 0
+        assert "Cannot specify both --global and a PROJECT path" in result.output
