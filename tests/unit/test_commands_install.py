@@ -9,6 +9,7 @@ from test_helpers import mock_config
 from dl_skills_manager.cli import main
 from dl_skills_manager.core.agents import AgentDirOverride
 from dl_skills_manager.core.commands.install import install_skill
+from dl_skills_manager.core.config import LinkMode
 from dl_skills_manager.core.exceptions import (
     SkillNotFoundError,
     ValidationError,
@@ -45,7 +46,7 @@ def _install(
     version: str | None = None,
     is_global: bool = False,
     project: str = ".",
-    link_mode: str | None = None,
+    link_mode: LinkMode = "copy",
     agent: str = "claude",
     agent_dirs: dict[str, AgentDirOverride] | None = None,
 ) -> Path:
@@ -199,7 +200,7 @@ class TestInstallSkillCore:
             version=None,
             is_global=False,
             project=str(project_dir),
-            link_mode=None,
+            link_mode="copy",
             agent="claude",
             config=config,
         )
@@ -311,3 +312,13 @@ class TestInstallCli:
 
         assert result.exit_code != 0
         assert "Cannot specify both --global and a PROJECT path" in result.output
+
+    def test_cli_invalid_name_without_repo_reports_config_error(
+        self, cli_runner: CliRunner, fake_home: Path
+    ) -> None:
+        """Adapter pre-validation removed: no repo + invalid name now
+        reports ConfigError (repo missing) rather than ValidationError."""
+        result = cli_runner.invoke(main, ["install", "../evil", "."])
+
+        assert result.exit_code == 1
+        assert "ConfigError" in result.output
