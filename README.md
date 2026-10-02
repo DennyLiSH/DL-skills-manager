@@ -103,6 +103,7 @@ skill-sync install <name> --agent pi <project-path>
 | `PROJECT` | `.` | 项目目录路径 |
 | `--global` | `False` | 安装到 `~/.claude/skills/` 而非项目 |
 | `--link-mode` | `copy` | 覆盖默认安装方式：`symlink` 或 `copy` |
+| `--agent` | `claude` | 目标 agent 目录（claude/codex/pi/zcode/workbuddy 或 `[agents]` 自定义） |
 
 ### `update` — 更新技能
 
@@ -127,6 +128,7 @@ skill-sync update <name> --agent codex --global
 | `NAME` | （必填） | 技能名称 |
 | `PROJECT` | `.` | 项目目录路径 |
 | `--global` | `False` | 更新 `~/.claude/skills/` 中的技能 |
+| `--agent` | `claude` | 目标 agent 目录（claude/codex/pi/zcode/workbuddy 或 `[agents]` 自定义） |
 
 ### `mklink` — 批量链接技能
 
@@ -162,6 +164,7 @@ skill-sync mklink <source-path> --agent codex <project-path>
 | `PROJECT` | `.` | 目标项目目录（决定 `.claude/skills/` 的位置） |
 | `--prefix` | `""` | symlink 名称前缀（如 `gstack-`） |
 | `--global` | `False` | 链接到 `~/.claude/skills/` 而非项目目录 |
+| `--agent` | `claude` | 目标 agent 目录（仅内置注册表，不读 `[agents]` 配置） |
 
 > **跳过规则：** 隐藏目录（`.` 开头）、不含 `SKILL.md` 的目录、普通文件会被自动跳过。已存在的同名技能会被覆盖。
 >
@@ -190,6 +193,7 @@ skill-sync remove <name> --agent codex --global
 | `NAME` | （必填） | 技能名称 |
 | `PROJECT` | `.` | 项目目录路径 |
 | `--global` | `False` | 从 `~/.claude/skills/` 移除 |
+| `--agent` | `claude` | 目标 agent 目录（claude/codex/pi/zcode/workbuddy 或 `[agents]` 自定义） |
 
 ### `list` — 列出所有技能
 
