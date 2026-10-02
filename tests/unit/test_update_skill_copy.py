@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from dl_skills_manager.core.commands.targets import update_skill_copy
+from dl_skills_manager.core.commands.update import update_skill_copy
 
 
 class TestUpdateSkillCopy:

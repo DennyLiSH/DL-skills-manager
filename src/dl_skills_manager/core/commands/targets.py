@@ -1,21 +1,12 @@
-"""Shared utilities for CLI commands.
+"""Target skills directory resolution for CLI commands."""
 
-Provides common functionality used across multiple commands such as
-repository path resolution and skill copy with backup/restore protection.
-"""
-
-import shutil
 from collections.abc import Mapping
 from pathlib import Path
 
 from dl_skills_manager.core.agents import AgentDirOverride, resolve_agent_dirs
-from dl_skills_manager.core.exceptions import LinkError, ValidationError
-from dl_skills_manager.core.linker import copy_skill_dir
+from dl_skills_manager.core.exceptions import ValidationError
 
-__all__ = [
-    "resolve_command_target_dir",
-    "update_skill_copy",
-]
+__all__ = ["resolve_command_target_dir"]
 
 
 def resolve_command_target_dir(
@@ -73,50 +64,3 @@ def resolve_command_target_dir(
 
     target.mkdir(parents=True, exist_ok=True)
     return target
-
-
-def update_skill_copy(
-    target_skills_dir: Path,
-    name: str,
-    version_dir: Path,
-) -> Path:
-    """Update a skill with backup/restore protection.
-
-    Creates a backup before updating. If the update fails, restores
-    from backup. Backup is deleted on success.
-
-    Args:
-        target_skills_dir: Path to the target skills directory.
-        name: Skill name.
-        version_dir: Path to the version directory to copy.
-
-    Returns:
-        Path to the updated skill copy.
-
-    Raises:
-        LinkError: If the update operation fails.
-    """
-    project_skill_path = target_skills_dir / name
-    backup_path = target_skills_dir / f"{name}.bk"
-
-    # Remove any stale backup from previous failed update
-    if backup_path.exists():
-        shutil.rmtree(backup_path)
-
-    # Create backup of current installation if it exists
-    if project_skill_path.exists():
-        shutil.copytree(project_skill_path, backup_path)
-
-    try:
-        copy_skill_dir(version_dir, project_skill_path, force=True)
-        # Success - delete backup
-        if backup_path.exists():
-            shutil.rmtree(backup_path)
-        return project_skill_path
-    except LinkError:
-        # Failure - restore from backup
-        if backup_path.exists():
-            if project_skill_path.exists():
-                shutil.rmtree(project_skill_path)
-            shutil.move(str(backup_path), str(project_skill_path))
-        raise
