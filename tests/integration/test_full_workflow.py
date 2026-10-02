@@ -1,8 +1,7 @@
-"""Full workflow integration tests."""
+"""Full workflow integration tests (fake_home/repo_home, zero patches)."""
 
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import patch
 
 import pytest
 import tomli_w
@@ -17,84 +16,50 @@ class TestWorkflow:
     """Test complete workflows."""
 
     def test_init_creates_structure(
-        self, cli_runner: CliRunner, tmp_path: Path
+        self, cli_runner: CliRunner, fake_home: Path
     ) -> None:
-        """Test that init creates correct directory structure."""
-        mock_config_path = tmp_path / ".skill-sync"
+        result = cli_runner.invoke(
+            main,
+            ["init", "--skills-path", str(fake_home / "skills")],
+            # Pre-Plan-4 init still prompts for link mode and consumes
+            # this input; after Plan 4 removes the prompt the leftover
+            # stdin is simply ignored — green in both windows.
+            input="copy\n",
+        )
 
-        with patch(
-            "dl_skills_manager.core.commands.init.get_default_repo_path",
-            return_value=mock_config_path,
-        ):
-            result = cli_runner.invoke(
-                main,
-                [
-                    "init",
-                    "--skills-path",
-                    str(tmp_path / "skills"),
-                    "--link-mode",
-                    "copy",
-                ],
-            )
-
-        assert result.exit_code == 0
-        assert (mock_config_path / "config.toml").exists()
+        assert result.exit_code == 0, result.output
+        assert (fake_home / ".skill-sync" / "config.toml").exists()
 
     def test_create_and_list_workflow(
         self, cli_runner: CliRunner, tmp_path: Path
     ) -> None:
-        """Test create and list workflow - skipped since create is TBD."""
         pytest.skip("create command is TBD")
 
     def test_multi_agent_install_update(
-        self, cli_runner: CliRunner, tmp_path: Path
+        self, cli_runner: CliRunner, repo_home: Path
     ) -> None:
         """End-to-end: real config load → install --agent codex → update."""
-        repo_path = tmp_path / ".skill-sync"
-        repo_path.mkdir()
-        store = tmp_path / "store"
-        skills_dir = store / "skills" / "demo-skill"
-        skills_dir.mkdir(parents=True)
-        (skills_dir / "SKILL.md").write_text("# demo\n")
+        skill = repo_home / "data" / "skills" / "demo-skill"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text("# demo\n")
+        fake_home = repo_home.parent
 
-        with (repo_path / "config.toml").open("wb") as f:
-            tomli_w.dump(
-                {
-                    "basic": {"path": str(repo_path), "skills_store": str(store)},
-                    "settings": {"default_link_mode": "copy"},
-                },
-                f,
-            )
-
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-
-        with (
-            patch(
-                "dl_skills_manager.core.config.get_default_repo_path",
-                return_value=repo_path,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.Path.home",
-                return_value=fake_home,
-            ),
-        ):
-            install_result = cli_runner.invoke(
-                main,
-                [
-                    "install",
-                    "--global",
-                    "--agent",
-                    "codex",
-                    "--link-mode",
-                    "symlink",
-                    "demo-skill",
-                ],
-            )
-            update_result = cli_runner.invoke(
-                main,
-                ["update", "--global", "--agent", "codex", "demo-skill"],
-            )
+        install_result = cli_runner.invoke(
+            main,
+            [
+                "install",
+                "--global",
+                "--agent",
+                "codex",
+                "--link-mode",
+                "symlink",
+                "demo-skill",
+            ],
+        )
+        update_result = cli_runner.invoke(
+            main,
+            ["update", "--global", "--agent", "codex", "demo-skill"],
+        )
 
         assert install_result.exit_code == 0, install_result.output
         assert (fake_home / ".agents" / "skills" / "demo-skill").exists()
@@ -105,43 +70,30 @@ class TestWorkflow:
         assert "symlink" in output or "updated" in output
 
     def test_multi_agent_config_override_install(
-        self, cli_runner: CliRunner, tmp_path: Path
+        self, cli_runner: CliRunner, repo_home: Path
     ) -> None:
         """[agents] override flows through real config load → install."""
-        repo_path = tmp_path / ".skill-sync"
-        repo_path.mkdir()
-        store = tmp_path / "store"
-        skills_dir = store / "skills" / "demo-skill"
-        skills_dir.mkdir(parents=True)
-        (skills_dir / "SKILL.md").write_text("# demo\n")
+        skill = repo_home / "data" / "skills" / "demo-skill"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text("# demo\n")
+        fake_home = repo_home.parent
 
-        with (repo_path / "config.toml").open("wb") as f:
+        with (repo_home / "config.toml").open("wb") as f:
             tomli_w.dump(
                 {
-                    "basic": {"path": str(repo_path), "skills_store": str(store)},
-                    "settings": {"default_link_mode": "copy"},
+                    "basic": {
+                        "path": str(repo_home),
+                        "skills_store": str(repo_home / "data"),
+                    },
                     "agents": {"codex": {"global_dir": "~/.codex/skills"}},
                 },
                 f,
             )
 
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-
-        with (
-            patch(
-                "dl_skills_manager.core.config.get_default_repo_path",
-                return_value=repo_path,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.Path.home",
-                return_value=fake_home,
-            ),
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["install", "--global", "--agent", "codex", "demo-skill"],
-            )
+        result = cli_runner.invoke(
+            main,
+            ["install", "--global", "--agent", "codex", "demo-skill"],
+        )
 
         assert result.exit_code == 0, result.output
         assert (fake_home / ".codex" / "skills" / "demo-skill").exists()
