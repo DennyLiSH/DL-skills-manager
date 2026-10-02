@@ -3,6 +3,10 @@
 All knowledge of the on-disk layout (skills/, .dev/, .bk/) and the
 backup naming convention ({name}@{version}) lives here. Callers go
 through the SkillsStore interface instead of assembling paths.
+
+Target-side install backups ({name}.bk, created by update_skill_copy
+in commands/update.py) are a separate namespace from the repository-
+side {name}@{version} backups owned here.
 """
 
 __all__ = [

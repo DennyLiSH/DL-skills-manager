@@ -83,6 +83,9 @@ def update_skill_copy(
     Creates a backup before updating. If the update fails, restores
     from backup. Backup is deleted on success.
 
+    Backup naming here is target-side `{name}.bk`; the repository-side
+    versioned backups use SkillsStore's `{name}@{version}` naming.
+
     Args:
         target_skills_dir: Path to the target skills directory.
         name: Skill name.
@@ -92,32 +95,46 @@ def update_skill_copy(
         Path to the updated skill copy.
 
     Raises:
-        LinkError: If the update operation fails.
+        WriteError: If backup creation, restore, or cleanup fails.
+        LinkError: If the update copy fails (after a successful restore).
     """
     project_skill_path = target_skills_dir / name
     backup_path = target_skills_dir / f"{name}.bk"
 
-    # Remove any stale backup from previous failed update
-    if backup_path.exists():
-        shutil.rmtree(backup_path)
-
-    # Create backup of current installation if it exists
-    if project_skill_path.exists():
-        shutil.copytree(project_skill_path, backup_path)
+    try:
+        # Remove any stale backup from a previous failed update
+        if backup_path.exists():
+            shutil.rmtree(backup_path)
+        # Create backup of the current installation if it exists
+        if project_skill_path.exists():
+            shutil.copytree(project_skill_path, backup_path)
+    except OSError as e:
+        raise WriteError(f"Failed to back up skill '{name}': {e}") from e
 
     try:
         copy_skill_dir(version_dir, project_skill_path, force=True)
-        # Success - delete backup
-        if backup_path.exists():
-            shutil.rmtree(backup_path)
-        return project_skill_path
     except LinkError:
-        # Failure - restore from backup
-        if backup_path.exists():
-            if project_skill_path.exists():
-                shutil.rmtree(project_skill_path)
-            shutil.move(str(backup_path), str(project_skill_path))
+        try:
+            if backup_path.exists():
+                if project_skill_path.exists():
+                    shutil.rmtree(project_skill_path)
+                shutil.move(str(backup_path), str(project_skill_path))
+        except OSError as restore_err:
+            raise WriteError(
+                f"Update failed and backup restore also failed for '{name}': "
+                f"{restore_err}"
+            ) from restore_err
         raise
+
+    # Success - delete backup
+    if backup_path.exists():
+        try:
+            shutil.rmtree(backup_path)
+        except OSError as e:
+            raise WriteError(
+                f"Failed to clean up backup of '{name}': {e}"
+            ) from e
+    return project_skill_path
 
 
 @click.command()
