@@ -2,7 +2,6 @@
 
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import patch
 
 import pytest
 
@@ -189,10 +188,10 @@ class TestMklinkCommand:
         # some-file.txt should not be mentioned
         assert "some-file" not in result.output
 
-    def test_mklink_global(self, cli_runner: CliRunner, source_dir: Path) -> None:
-        """Test --global links to ~/.claude/skills/."""
-        global_skills_dir = Path.home() / ".claude" / "skills"
-
+    def test_mklink_global(
+        self, cli_runner: CliRunner, source_dir: Path, fake_home: Path
+    ) -> None:
+        """Test --global links to ~/.claude/skills/ (fake home)."""
         result = cli_runner.invoke(
             main,
             ["mklink", "--global", str(source_dir)],
@@ -200,22 +199,8 @@ class TestMklinkCommand:
 
         assert result.exit_code == 0, result.output
         assert "Linked skill-a" in result.output
-        assert "Linked skill-b" in result.output
-
-        # Verify links exist in global dir
-        assert (global_skills_dir / "skill-a").exists()
-        assert (global_skills_dir / "skill-b").exists()
-
-        # Cleanup
-        import shutil
-
-        for name in ("skill-a", "skill-b"):
-            path = global_skills_dir / name
-            if path.exists():
-                if path.is_symlink() or path.is_dir():
-                    shutil.rmtree(path, ignore_errors=True)
-                else:
-                    path.unlink(missing_ok=True)
+        assert (fake_home / ".claude" / "skills" / "skill-a").exists()
+        assert (fake_home / ".claude" / "skills" / "skill-b").exists()
 
     def test_mklink_global_and_project_conflict(
         self, cli_runner: CliRunner, source_dir: Path, project_dir: Path
@@ -243,20 +228,13 @@ class TestMklinkCommand:
         assert (project_dir / ".agents" / "skills" / "skill-b").exists()
 
     def test_mklink_agent_pi_global(
-        self, cli_runner: CliRunner, source_dir: Path, tmp_path: Path
+        self, cli_runner: CliRunner, source_dir: Path, fake_home: Path
     ) -> None:
         """--agent pi --global links into ~/.pi/agent/skills/."""
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-
-        with patch(
-            "dl_skills_manager.core.commands._shared.Path.home",
-            return_value=fake_home,
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["mklink", "--agent", "pi", "--global", str(source_dir)],
-            )
+        result = cli_runner.invoke(
+            main,
+            ["mklink", "--agent", "pi", "--global", str(source_dir)],
+        )
 
         assert result.exit_code == 0, result.output
         assert (fake_home / ".pi" / "agent" / "skills" / "skill-a").exists()
@@ -273,78 +251,47 @@ class TestMklinkCommand:
         assert "Unknown agent" in result.output
 
     def test_mklink_ignores_agents_config(
-        self, cli_runner: CliRunner, source_dir: Path, tmp_path: Path
+        self, cli_runner: CliRunner, source_dir: Path, repo_home: Path
     ) -> None:
         """D6 guard: mklink never reads [agents] config overrides.
 
         A real config.toml with a codex override exists, yet mklink must
         still resolve codex to the builtin ~/.agents/skills/.
         """
-        repo_path = tmp_path / ".skill-sync"
-        repo_path.mkdir()
-        (repo_path / "config.toml").write_text(
-            "[basic]\n"
-            "path = 'x'\n"
-            "skills_store = 'x'\n"
-            "\n"
-            "[agents.codex]\n"
-            "global_dir = '~/.codex/skills'\n"
-        )
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
+        with (repo_home / "config.toml").open("ab") as f:
+            f.write(b"\n[agents.codex]\nglobal_dir = '~/.codex/skills'\n")
 
-        with (
-            patch(
-                "dl_skills_manager.core.config.get_default_repo_path",
-                return_value=repo_path,
-            ),
-            patch(
-                "dl_skills_manager.core.commands._shared.Path.home",
-                return_value=fake_home,
-            ),
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["mklink", "--agent", "codex", "--global", str(source_dir)],
-            )
+        result = cli_runner.invoke(
+            main,
+            ["mklink", "--agent", "codex", "--global", str(source_dir)],
+        )
 
         assert result.exit_code == 0, result.output
-        assert (fake_home / ".agents" / "skills" / "skill-a").exists()
-        assert not (fake_home / ".codex" / "skills").exists()
+        home = repo_home.parent
+        assert (home / ".agents" / "skills" / "skill-a").exists()
+        assert not (home / ".codex" / "skills").exists()
 
     def test_mklink_ignores_agents_config_project(
         self,
         cli_runner: CliRunner,
         source_dir: Path,
         project_dir: Path,
-        tmp_path: Path,
+        repo_home: Path,
     ) -> None:
         """D6 guard, project branch: [agents] project_dir overrides are ignored.
 
-        A real config.toml with a codex project_dir override exists and the
-        config lookup is pointed at it — if mklink ever wires agent_overrides
-        into the project branch, links would land in .codex-override/ and the
-        reverse assertion below would trip.
+        A real config.toml with a codex project_dir override exists and
+        sits at the real discovery path — if mklink ever wires
+        agent_overrides into the project branch, links would land in
+        .codex-override/ and the reverse assertion below would trip.
         """
-        repo_path = tmp_path / ".skill-sync"
-        repo_path.mkdir()
-        (repo_path / "config.toml").write_text(
-            "[basic]\n"
-            "path = 'x'\n"
-            "skills_store = 'x'\n"
-            "\n"
-            "[agents.codex]\n"
-            "project_dir = '.codex-override/skills'\n"
-        )
+        with (repo_home / "config.toml").open("ab") as f:
+            f.write(b"\n[agents.codex]\nproject_dir = '.codex-override/skills'\n")
 
-        with patch(
-            "dl_skills_manager.core.config.get_default_repo_path",
-            return_value=repo_path,
-        ):
-            result = cli_runner.invoke(
-                main,
-                ["mklink", "--agent", "codex", str(source_dir), str(project_dir)],
-            )
+        result = cli_runner.invoke(
+            main,
+            ["mklink", "--agent", "codex", str(source_dir), str(project_dir)],
+        )
 
         assert result.exit_code == 0, result.output
         assert (project_dir / ".agents" / "skills" / "skill-a").exists()
