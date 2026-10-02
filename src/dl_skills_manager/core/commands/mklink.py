@@ -4,13 +4,9 @@ from pathlib import Path
 
 import click
 
-from dl_skills_manager.core.commands._shared import (
-    resolve_command_target_dir,
-    validate_skill_name,
-)
+from dl_skills_manager.core.commands._shared import resolve_command_target_dir
 from dl_skills_manager.core.linker import create_link
-
-SKILL_MARKER = "SKILL.md"
+from dl_skills_manager.core.store import SKILL_MARKER, validate_skill_name
 
 
 @click.command()

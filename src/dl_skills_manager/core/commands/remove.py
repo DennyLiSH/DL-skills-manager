@@ -4,12 +4,10 @@ __all__ = ["remove"]
 
 import click
 
-from dl_skills_manager.core.commands._shared import (
-    resolve_command_target_dir,
-    validate_skill_name,
-)
+from dl_skills_manager.core.commands._shared import resolve_command_target_dir
 from dl_skills_manager.core.config import load_config
 from dl_skills_manager.core.linker import remove_link
+from dl_skills_manager.core.store import validate_skill_name
 
 
 @click.command()
