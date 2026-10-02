@@ -1,180 +1,122 @@
-"""Tests for mtp command."""
+"""Tests for mtp command (core function + CLI adapter)."""
 
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import patch
 
 import pytest
-import tomli_w
 from test_helpers import mock_config
 
 from dl_skills_manager.cli import main
+from dl_skills_manager.core.commands.mtp import promote_skill
+from dl_skills_manager.core.exceptions import SkillNotFoundError, ValidationError
+from dl_skills_manager.core.store import Promotion
 
 if TYPE_CHECKING:
     from click.testing import CliRunner
 
 
-@pytest.fixture
-def repo_with_dev_skill(tmp_path: Path) -> Path:
-    """Create a repository with a skill in .dev/."""
-    repo_path = tmp_path / ".skill-sync"
-    repo_path.mkdir()
-    data_dir = repo_path / "data"
-    data_dir.mkdir()
-    (data_dir / "skills").mkdir()
-    (data_dir / ".bk").mkdir()
+def _seed_dev_skill(repo: Path, text: str = "# My Skill\n") -> None:
+    dev = repo / "data" / ".dev" / "my-skill"
+    dev.mkdir(parents=True, exist_ok=True)
+    (dev / "SKILL.md").write_text(text)
 
-    # Create .dev/skill
-    dev_dir = data_dir / ".dev" / "my-skill"
-    dev_dir.mkdir(parents=True)
-    (dev_dir / "SKILL.md").write_text("# My Skill\n")
 
-    # Create config.toml
-    config_path = repo_path / "config.toml"
-    with config_path.open("wb") as f:
-        tomli_w.dump(
-            {
-                "basic": {
-                    "path": str(repo_path),
-                    "skills_store": str(data_dir),
-                },
-                "settings": {"default_link_mode": "copy"},
-            },
-            f,
-        )
+class TestPromoteSkillCore:
+    """Core function tests: real config objects, no patches."""
 
-    return repo_path
+    def test_promotes_to_production_with_backup(self, repo_home: Path) -> None:
+        _seed_dev_skill(repo_home)
+
+        result = promote_skill("my-skill", config=mock_config(repo_home))
+
+        assert isinstance(result, Promotion)
+        target = repo_home / "data" / "skills" / "my-skill"
+        assert (target / "SKILL.md").read_text() == "# My Skill\n"
+        assert result.target == target
+        assert result.backup.parent == repo_home / "data" / ".bk"
+        assert result.backup.name.startswith("my-skill@v")
+
+    def test_dev_not_found_raises(self, repo_home: Path) -> None:
+        with pytest.raises(SkillNotFoundError, match="not found"):
+            promote_skill("nonexistent", config=mock_config(repo_home))
+
+    def test_invalid_name_raises(self, repo_home: Path) -> None:
+        with pytest.raises(ValidationError, match="Invalid skill name"):
+            promote_skill("../evil", config=mock_config(repo_home))
 
 
 class TestMtpCommand:
-    """Tests for mtp command."""
+    """CLI adapter tests via repo_home (real load_config, zero patches)."""
 
     def test_mtp_copies_to_production(
-        self, cli_runner: CliRunner, repo_with_dev_skill: Path
+        self, cli_runner: CliRunner, repo_home: Path
     ) -> None:
-        """Test mtp copies .dev skill to skills_store/skills/."""
-        with patch(
-            "dl_skills_manager.core.commands.mtp.load_config",
-            return_value=mock_config(repo_with_dev_skill),
-        ):
-            result = cli_runner.invoke(main, ["mtp", "my-skill"])
+        _seed_dev_skill(repo_home)
+
+        result = cli_runner.invoke(main, ["mtp", "my-skill"])
 
         assert result.exit_code == 0, result.output
         assert "Moved 'my-skill' to production" in result.output
 
-        # Verify skill exists at skills/ subdirectory
-        target = repo_with_dev_skill / "data" / "skills" / "my-skill"
-        assert target.exists()
+        target = repo_home / "data" / "skills" / "my-skill"
         assert (target / "SKILL.md").read_text() == "# My Skill\n"
 
-        # Verify backup exists in .bk
-        bk_dir = repo_with_dev_skill / "data" / ".bk"
-        bk_entries = list(bk_dir.iterdir())
+        bk_entries = list((repo_home / "data" / ".bk").iterdir())
         assert len(bk_entries) == 1
         assert bk_entries[0].name.startswith("my-skill@v")
 
     def test_mtp_overwrites_existing(
-        self, cli_runner: CliRunner, repo_with_dev_skill: Path
+        self, cli_runner: CliRunner, repo_home: Path
     ) -> None:
-        """Test mtp overwrites existing skill in skills_store/skills/."""
-        skills_subdir = repo_with_dev_skill / "data" / "skills"
-
-        # Create existing skill (old version)
-        existing = skills_subdir / "my-skill"
+        _seed_dev_skill(repo_home)
+        existing = repo_home / "data" / "skills" / "my-skill"
         existing.mkdir()
         (existing / "SKILL.md").write_text("# Old Version\n")
 
-        with patch(
-            "dl_skills_manager.core.commands.mtp.load_config",
-            return_value=mock_config(repo_with_dev_skill),
-        ):
-            result = cli_runner.invoke(main, ["mtp", "my-skill"])
+        result = cli_runner.invoke(main, ["mtp", "my-skill"])
 
         assert result.exit_code == 0, result.output
-
-        # Verify old version was replaced
         assert (existing / "SKILL.md").read_text() == "# My Skill\n"
 
-    def test_mtp_version_format(
-        self, cli_runner: CliRunner, repo_with_dev_skill: Path
-    ) -> None:
-        """Test .bk version follows vYYYY.MM.DD format."""
-        with patch(
-            "dl_skills_manager.core.commands.mtp.load_config",
-            return_value=mock_config(repo_with_dev_skill),
-        ):
-            result = cli_runner.invoke(main, ["mtp", "my-skill"])
+    def test_mtp_version_format(self, cli_runner: CliRunner, repo_home: Path) -> None:
+        _seed_dev_skill(repo_home)
+
+        result = cli_runner.invoke(main, ["mtp", "my-skill"])
 
         assert result.exit_code == 0, result.output
-
-        bk_dir = repo_with_dev_skill / "data" / ".bk"
-        bk_entries = list(bk_dir.iterdir())
-        version_name = bk_entries[0].name
-
-        # Should be my-skill@vYYYY.MM.DD
-        assert version_name.startswith("my-skill@v")
-        # Verify format matches vYYYY.MM.DD
+        version_name = next((repo_home / "data" / ".bk").iterdir()).name
         version_part = version_name.split("@", 1)[1]
-        import re
-
-        assert re.match(r"v\d{4}\.\d{2}\.\d{2}$", version_part), (
+        assert re.fullmatch(r"v\d{4}\.\d{2}\.\d{2}", version_part), (
             f"Version '{version_part}' doesn't match vYYYY.MM.DD"
         )
 
     def test_mtp_same_day_increments(
-        self, cli_runner: CliRunner, repo_with_dev_skill: Path
+        self, cli_runner: CliRunner, repo_home: Path
     ) -> None:
-        """Test same-day mtp increments version suffix."""
-        bk_dir = repo_with_dev_skill / "data" / ".bk"
+        _seed_dev_skill(repo_home)
 
-        # Create existing backup with same base version
-        with patch(
-            "dl_skills_manager.core.commands.mtp.load_config",
-            return_value=mock_config(repo_with_dev_skill),
-        ):
-            # First mtp
-            result1 = cli_runner.invoke(main, ["mtp", "my-skill"])
-            assert result1.exit_code == 0, result1.output
+        result1 = cli_runner.invoke(main, ["mtp", "my-skill"])
+        assert result1.exit_code == 0, result1.output
 
-            # Re-create .dev skill for second mtp
-            dev_dir = repo_with_dev_skill / "data" / ".dev" / "my-skill"
-            dev_dir.mkdir(parents=True, exist_ok=True)
-            (dev_dir / "SKILL.md").write_text("# Updated Skill\n")
+        _seed_dev_skill(repo_home, text="# Updated Skill\n")
+        result2 = cli_runner.invoke(main, ["mtp", "my-skill"])
+        assert result2.exit_code == 0, result2.output
 
-            # Second mtp (same day)
-            result2 = cli_runner.invoke(main, ["mtp", "my-skill"])
-            assert result2.exit_code == 0, result2.output
-
-        # Should have two backups: base and .1
-        bk_entries = sorted(e.name for e in bk_dir.iterdir())
+        bk_entries = sorted(e.name for e in (repo_home / "data" / ".bk").iterdir())
         assert len(bk_entries) == 2
-        # One should have .1 suffix
         versions = [e.split("@", 1)[1] for e in bk_entries]
         assert any(v.endswith(".1") for v in versions), (
             f"Expected .1 suffix in {versions}"
         )
 
-    def test_mtp_dev_not_found(
-        self, cli_runner: CliRunner, repo_with_dev_skill: Path
-    ) -> None:
-        """Test mtp fails when skill not in .dev/."""
-        with patch(
-            "dl_skills_manager.core.commands.mtp.load_config",
-            return_value=mock_config(repo_with_dev_skill),
-        ):
-            result = cli_runner.invoke(main, ["mtp", "nonexistent"])
+    def test_mtp_dev_not_found(self, cli_runner: CliRunner, repo_home: Path) -> None:
+        result = cli_runner.invoke(main, ["mtp", "nonexistent"])
 
         assert result.exit_code != 0
         assert "not found" in result.output.lower()
 
-    def test_mtp_invalid_name(
-        self, cli_runner: CliRunner, repo_with_dev_skill: Path
-    ) -> None:
-        """Test mtp fails with invalid skill name."""
-        with patch(
-            "dl_skills_manager.core.commands.mtp.load_config",
-            return_value=mock_config(repo_with_dev_skill),
-        ):
-            result = cli_runner.invoke(main, ["mtp", "../evil"])
+    def test_mtp_invalid_name(self, cli_runner: CliRunner, repo_home: Path) -> None:
+        result = cli_runner.invoke(main, ["mtp", "../evil"])
 
         assert result.exit_code != 0
