@@ -1,6 +1,9 @@
 """Update skill command."""
 
-__all__ = ["update"]
+__all__ = ["update", "update_skill"]
+
+from dataclasses import dataclass
+from pathlib import Path
 
 import click
 
@@ -8,8 +11,62 @@ from dl_skills_manager.core.commands._shared import (
     resolve_command_target_dir,
     update_skill_copy,
 )
-from dl_skills_manager.core.config import load_config
+from dl_skills_manager.core.config import SkillSyncConfig, load_config
 from dl_skills_manager.core.store import SkillsStore
+
+
+@dataclass(frozen=True, slots=True)
+class UpdateOutcome:
+    """Result of an update attempt."""
+
+    skipped: bool
+    path: Path | None = None
+    symlink_target: Path | None = None
+
+
+def update_skill(
+    name: str,
+    *,
+    is_global: bool,
+    project: str,
+    agent: str,
+    config: SkillSyncConfig,
+) -> UpdateOutcome:
+    """Update a copy-installed skill to the latest stable version.
+
+    Symlink installs are skipped: the symlink already points at the
+    repository source (the caller decides how to report that).
+
+    Args:
+        name: Skill name.
+        is_global: Target the agent's global skills dir.
+        project: Project path string (used when is_global is False).
+        agent: Agent name.
+        config: Pre-loaded repository config.
+
+    Returns:
+        UpdateOutcome describing skip (with symlink target) or the
+        updated install path.
+
+    Raises:
+        SkillNotFoundError: Skill missing from the repository.
+        ValidationError: Unknown agent or unsupported scope.
+        LinkError: Copy failure (after backup/restore protection).
+    """
+    target_skills_dir = resolve_command_target_dir(
+        is_global=is_global,
+        project=project,
+        agent=agent,
+        agent_overrides=config.agent_dirs,
+    )
+    version_dir = SkillsStore(config.skills_store).find_version(name)
+
+    installed = target_skills_dir / name
+    if installed.is_symlink():
+        return UpdateOutcome(skipped=True, symlink_target=installed.resolve())
+
+    update_skill_copy(target_skills_dir, name, version_dir)
+    return UpdateOutcome(skipped=False, path=installed)
 
 
 @click.command()
@@ -38,25 +95,15 @@ def update(name: str, project: str, *, is_global: bool, agent: str) -> None:
     if is_global and project != ".":
         raise click.UsageError("Cannot specify both --global and a PROJECT path.")
 
-    # Load config first: [agents] overrides affect target dir resolution
     config = load_config()
 
-    # Resolve target skills directory
-    target_skills_dir = resolve_command_target_dir(
-        is_global=is_global,
-        project=project,
-        agent=agent,
-        agent_overrides=config.agent_dirs,
+    outcome = update_skill(
+        name, is_global=is_global, project=project, agent=agent, config=config
     )
 
-    # Find skill and version directories (update always uses stable/latest)
-    version_dir = SkillsStore(config.skills_store).find_version(name)
-
-    # Check if skill is installed as symlink — skip update
-    project_skill_link = target_skills_dir / name
-    if project_skill_link.is_symlink():
-        resolved = project_skill_link.resolve()
-        click.echo(f"Skill '{name}' is installed as symlink -> {resolved}")
+    if outcome.skipped:
+        assert outcome.symlink_target is not None
+        click.echo(f"Skill '{name}' is installed as symlink -> {outcome.symlink_target}")
         click.echo("No update needed — symlink points directly to repository source.")
         reinstall_flags: list[str] = []
         if is_global:
@@ -69,12 +116,5 @@ def update(name: str, project: str, *, is_global: bool, agent: str) -> None:
             f"skill-sync install {name}{flag_suffix}"
         )
         return
-
-    # Copy-installed skill: perform overwrite update
-    update_skill_copy(
-        target_skills_dir,
-        name,
-        version_dir,
-    )
 
     click.echo(f"Updated {name} to latest")
