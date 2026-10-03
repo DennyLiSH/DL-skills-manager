@@ -2,16 +2,49 @@
 
 A CLI tool for managing Claude Code skills.
 
-## Installation
+## Installation（新设备）
+
+前置条件：
+
+- [uv](https://docs.astral.sh/uv/)（Python 3.14+ 由 uv 自动获取，无需预装）
+- git
 
 ```bash
-# 克隆仓库
-git clone <repo-url> ~/.skill-sync
-cd ~/.skill-sync
+# 1. 克隆代码仓库到任意代码目录
+#    ⚠ 不要克隆到 ~/.skill-sync —— 那是数据仓库目录，由 skill-sync init 管理
+git clone https://github.com/DennyLiSH/DL-skills-manager ~/tools/skills-manager
+cd ~/tools/skills-manager
 
-# 安装为全局工具
+# 2. 安装为全局工具（提供 skill-sync 命令）
 uv tool install .
+
+# 3. 验证安装
+uv tool list        # 应显示 dl-skills-manager 及版本（与 pyproject.toml 的 version 一致）
+skill-sync --help
 ```
+
+> **代码仓库 vs 数据仓库**：`git clone` 得到的是工具源码目录；`~/.skill-sync/`（由 `init` 创建）存放配置和技能数据，两者相互独立。多设备共享技能时只需同步数据仓库（或自定义的 `skills_store` 目录）。
+
+## Update（升级已安装版本）
+
+工具以快照方式安装（非 editable），仓库发版后需手动升级：
+
+```bash
+# 查看当前安装的版本
+uv tool list
+
+# 方式一：升级（从原始安装路径重新构建；若该克隆目录已删除/移动则改用方式二）
+uv tool upgrade dl-skills-manager
+
+# 方式二：强制重装（从任意仓库路径，如切换到新克隆目录后）
+cd <repo-path>
+uv tool install . --reinstall
+
+# 验证：版本应与 pyproject.toml 的 version 一致
+uv tool list
+```
+
+版本号采用 CalVer 格式 `YYYY.M.D`（如 `26.10.1`），定义在 `pyproject.toml`。CLI 暂无 `--version` 选项，统一用 `uv tool list` 查询。
 
 ## Quick Start
 
