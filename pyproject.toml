@@ -21,7 +21,6 @@ authors = [
 dependencies = [
     "tomli-w>=1.0.0",
     "click>=8.1.0",
-    "packaging>=24.0",
 ]
 
 [project.scripts]
@@ -87,10 +86,6 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "tomli_w.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "packaging.*"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
