@@ -12,6 +12,7 @@
 ## 模块词汇
 
 - **SkillsStore**（`core/store.py`）：仓库布局与备份命名的唯一所有者。查询：`find_skill` / `find_version` / `list_backups` / `list_skills`；版本号生成：`next_backup_version`；写入：`promote`（.dev → 生产 + 备份）。
-- **安装目标 (target dir)**：技能被安装到的目录——项目内 `{project}/{agent.project_dir}` 或全局 `{home}/{agent.global_dir}`，解析入口 `resolve_command_target_dir`。
+- **is_skill_dir**（`core/store.py`）："什么算一个技能目录"的唯一判定（目录含 `SKILL.md`）；store 扫描与 mklink 的外部目录扫描共用。
+- **安装目标 (target dir)**：技能被安装到的目录——项目内 `{project}/{agent.project_dir}` 或全局 `{home}/{agent.global_dir}`，解析入口 `resolve_command_target_dir`（纯查询）+ `ensure_target_dir`（写路径就绪契约，`core/commands/targets.py`）。
 - **Agent 注册表**（`core/agents.py`）：内置 agent 目录布局 + `config.toml [agents]` 覆盖；纯函数，无 I/O。
 - **技能标记**：`SKILL.md`。
