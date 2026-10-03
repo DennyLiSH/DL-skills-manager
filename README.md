@@ -31,7 +31,7 @@ skill-sync --help
 
 ```bash
 # 查看当前安装的版本
-uv tool list
+skill-sync --version
 
 # 方式一：升级（从原始安装路径重新构建；若该克隆目录已删除/移动则改用方式二）
 uv tool upgrade dl-skills-manager
@@ -41,10 +41,10 @@ cd <repo-path>
 uv tool install . --reinstall
 
 # 验证：版本应与 pyproject.toml 的 version 一致
-uv tool list
+skill-sync --version
 ```
 
-版本号采用 CalVer 格式 `YYYY.M.D`（如 `26.10.1`），定义在 `pyproject.toml`。CLI 暂无 `--version` 选项，统一用 `uv tool list` 查询。
+版本号采用 CalVer 格式 `YYYY.M.D`（如 `26.10.1`），定义在 `pyproject.toml`，可用 `skill-sync --version` 直接查询当前安装版本。
 
 ## Quick Start
 
