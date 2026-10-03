@@ -60,13 +60,12 @@ project_dir = ".mytool/skills"
 创建 `~/.skill-sync/` 配置目录和技能存储目录。
 
 ```bash
-skill-sync init [--skills-path <path>] [--link-mode <mode>]
+skill-sync init [--skills-path <path>]
 ```
 
 | 选项 | 默认值 | 说明 |
 |------|--------|------|
 | `--skills-path` | `~/.skill-sync/data/` | 技能存储根目录 |
-| `--link-mode` | `copy` | 安装方式：`symlink` 或 `copy`（不指定时交互式询问） |
 
 > **为什么默认是 copy？** 考虑到多设备同步场景（不同磁盘架构、跨盘存储），symlink 可能指向不可达路径。copy 模式确保技能文件独立可用。
 
