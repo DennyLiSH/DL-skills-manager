@@ -106,9 +106,7 @@ class TestAgentDirsParsing:
         repo_path = tmp_path / ".skill-sync"
         repo_path.mkdir()
         (repo_path / "config.toml").write_text(
-            "[basic]\n"
-            "path = '~/.skill-sync'\n"
-            "skills_store = '/tmp/skills'\n" + extra
+            "[basic]\npath = '~/.skill-sync'\nskills_store = '/tmp/skills'\n" + extra
         )
 
     def _load(self, tmp_path: Path) -> SkillSyncConfig:
