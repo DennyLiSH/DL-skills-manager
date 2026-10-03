@@ -3,7 +3,6 @@
 __all__ = [
     "LinkMode",
     "SkillSyncConfig",
-    "create_default_config",
     "expand_path",
     "get_default_repo_path",
     "load_config",
@@ -107,21 +106,4 @@ def load_config() -> SkillSyncConfig:
         skills_store=skills_store,
         default_link_mode=default_link_mode,
         agent_dirs=agent_dirs,
-    )
-
-
-def create_default_config(repo_path: Path, skills_store: Path) -> SkillSyncConfig:
-    """Create default repository configuration.
-
-    Args:
-        repo_path: Path to the config directory.
-        skills_store: Path to the skills storage directory.
-
-    Returns:
-        Default SkillSyncConfig instance.
-    """
-    return SkillSyncConfig(
-        path=repo_path,
-        skills_store=skills_store,
-        default_link_mode="copy",
     )

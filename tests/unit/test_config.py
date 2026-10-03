@@ -8,7 +8,6 @@ import pytest
 from dl_skills_manager.core.agents import AgentDirOverride
 from dl_skills_manager.core.config import (
     SkillSyncConfig,
-    create_default_config,
     expand_path,
     get_default_repo_path,
     load_config,
@@ -38,21 +37,6 @@ class TestGetDefaultRepoPath:
         """Test default path contains .skill-sync."""
         result = get_default_repo_path()
         assert ".skill-sync" in str(result)
-
-
-class TestCreateDefaultConfig:
-    """Tests for create_default_config function."""
-
-    def test_returns_default_values(self) -> None:
-        """Test default config has expected values."""
-        repo_path = Path("/test/.skill-sync")
-        skills_store = Path("/test/.skill-sync/skills")
-        config = create_default_config(repo_path, skills_store)
-
-        assert isinstance(config, SkillSyncConfig)
-        assert config.path == repo_path
-        assert config.skills_store == skills_store
-        assert config.default_link_mode == "copy"
 
 
 class TestLoadConfig:
