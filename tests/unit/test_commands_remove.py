@@ -55,6 +55,22 @@ class TestRemoveSkillCore:
 
         assert removed is False
 
+    def test_not_installed_leaves_no_dir_footprint(self, tmp_path: Path) -> None:
+        """Removing a not-installed skill must not create .claude/skills/."""
+        project = tmp_path / "proj"
+        project.mkdir()
+
+        removed = remove_skill(
+            "nonexistent",
+            is_global=False,
+            project=str(project),
+            agent="claude",
+            config=mock_config(tmp_path),
+        )
+
+        assert removed is False
+        assert not (project / ".claude").exists()
+
     def test_invalid_name_raises(self, tmp_path: Path) -> None:
         project = tmp_path / "proj"
         project.mkdir()

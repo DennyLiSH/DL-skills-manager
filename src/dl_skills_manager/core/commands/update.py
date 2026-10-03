@@ -12,7 +12,10 @@ from dl_skills_manager.core.commands._options import (
     reject_global_with_project,
     target_options,
 )
-from dl_skills_manager.core.commands.targets import resolve_command_target_dir
+from dl_skills_manager.core.commands.targets import (
+    ensure_target_dir,
+    resolve_command_target_dir,
+)
 from dl_skills_manager.core.config import SkillSyncConfig, load_config
 from dl_skills_manager.core.exceptions import LinkError, WriteError
 from dl_skills_manager.core.linker import copy_skill_dir
@@ -57,11 +60,13 @@ def update_skill(
         ValidationError: Unknown agent or unsupported scope.
         LinkError: Copy failure (after backup/restore protection).
     """
-    target_skills_dir = resolve_command_target_dir(
-        is_global=is_global,
-        project=project,
-        agent=agent,
-        agent_overrides=config.agent_dirs,
+    target_skills_dir = ensure_target_dir(
+        resolve_command_target_dir(
+            is_global=is_global,
+            project=project,
+            agent=agent,
+            agent_overrides=config.agent_dirs,
+        )
     )
     version_dir = SkillsStore(config.skills_store).find_version(name)
 

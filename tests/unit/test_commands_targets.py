@@ -1,42 +1,46 @@
-"""Unit tests for resolve_command_target_dir (targets module)."""
+"""Unit tests for targets module (resolve + ensure)."""
 
 from pathlib import Path
 
 import pytest
 
 from dl_skills_manager.core.agents import AgentDirOverride
-from dl_skills_manager.core.commands.targets import resolve_command_target_dir
+from dl_skills_manager.core.commands.targets import (
+    ensure_target_dir,
+    resolve_command_target_dir,
+)
 from dl_skills_manager.core.exceptions import ValidationError
 
 
 class TestResolveCommandTargetDir:
-    """Tests for the single target dir resolution entry point."""
+    """resolve is a pure query: it computes paths, creates nothing."""
 
     def test_global_returns_home_claude_skills(self, fake_home: Path) -> None:
-        """Global flag resolves to ~/.claude/skills/."""
         result = resolve_command_target_dir(is_global=True, project=".")
         assert result == fake_home / ".claude" / "skills"
-        assert result.exists()
+        assert not result.exists()
 
     def test_local_returns_project_claude_skills(self, tmp_path: Path) -> None:
-        """Local resolves to {project}/.claude/skills/ and creates it."""
         project = tmp_path / "new-project"
         project.mkdir()
         result = resolve_command_target_dir(is_global=False, project=str(project))
         assert result == project / ".claude" / "skills"
-        assert result.exists()
+        assert not result.exists()
 
     def test_agent_global(self, fake_home: Path) -> None:
-        result = resolve_command_target_dir(is_global=True, project=".", agent="codex")
+        result = resolve_command_target_dir(
+            is_global=True, project=".", agent="codex"
+        )
         assert result == fake_home / ".agents" / "skills"
-        assert result.is_dir()
+        assert not result.exists()
 
     def test_agent_global_tilde_override(self, fake_home: Path) -> None:
-        """'~'-prefixed override must resolve via the Path.home seam.
+        """'~'-prefixed override must land under the fake home.
 
-        expanduser() reads USERPROFILE and would bypass the seam (and
-        write to the real home) — this test pins the home-seam behavior
-        (unchanged from the merged-away implementation).
+        Path.home() is the documented home seam; this test asserts the
+        resolved path lands under fake_home (fake_home also redirects
+        the env vars, so this is a path-correctness pin rather than an
+        implementation pin).
         """
         result = resolve_command_target_dir(
             is_global=True,
@@ -45,7 +49,7 @@ class TestResolveCommandTargetDir:
             agent_overrides={"codex": AgentDirOverride(global_dir="~/.codex/skills")},
         )
         assert result == fake_home / ".codex" / "skills"
-        assert result.is_dir()
+        assert not result.exists()
 
     def test_agent_global_absolute_path_override(self, tmp_path: Path) -> None:
         """Non-'~' absolute override is used as-is (no home involved)."""
@@ -57,7 +61,7 @@ class TestResolveCommandTargetDir:
             agent_overrides={"codex": AgentDirOverride(global_dir=str(abs_dir))},
         )
         assert result == abs_dir
-        assert result.is_dir()
+        assert not result.exists()
 
     def test_agent_project(self, tmp_path: Path) -> None:
         project = tmp_path / "proj"
@@ -66,7 +70,7 @@ class TestResolveCommandTargetDir:
             is_global=False, project=str(project), agent="pi"
         )
         assert result == project / ".pi" / "skills"
-        assert result.is_dir()
+        assert not result.exists()
 
     def test_default_agent_is_claude(self, tmp_path: Path) -> None:
         project = tmp_path / "proj"
@@ -118,3 +122,17 @@ class TestResolveCommandTargetDir:
                     "mytool": AgentDirOverride(project_dir=".mytool/skills")
                 },
             )
+
+
+class TestEnsureTargetDir:
+    """ensure_target_dir is the explicit 'ready to write' contract."""
+
+    def test_creates_missing_dir(self, tmp_path: Path) -> None:
+        target = tmp_path / "deep" / ".claude" / "skills"
+        assert ensure_target_dir(target) == target
+        assert target.is_dir()
+
+    def test_idempotent_on_existing_dir(self, tmp_path: Path) -> None:
+        target = tmp_path / "skills"
+        target.mkdir()
+        assert ensure_target_dir(target) == target

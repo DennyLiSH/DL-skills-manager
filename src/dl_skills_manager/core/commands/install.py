@@ -10,7 +10,10 @@ from dl_skills_manager.core.commands._options import (
     reject_global_with_project,
     target_options,
 )
-from dl_skills_manager.core.commands.targets import resolve_command_target_dir
+from dl_skills_manager.core.commands.targets import (
+    ensure_target_dir,
+    resolve_command_target_dir,
+)
 from dl_skills_manager.core.config import LinkMode, SkillSyncConfig, load_config
 from dl_skills_manager.core.linker import copy_skill_dir, create_link
 from dl_skills_manager.core.store import SkillsStore
@@ -51,11 +54,13 @@ def install_skill(
     """
     version_dir = SkillsStore(config.skills_store).find_version(name, version)
 
-    target_skills_dir = resolve_command_target_dir(
-        is_global=is_global,
-        project=project,
-        agent=agent,
-        agent_overrides=config.agent_dirs,
+    target_skills_dir = ensure_target_dir(
+        resolve_command_target_dir(
+            is_global=is_global,
+            project=project,
+            agent=agent,
+            agent_overrides=config.agent_dirs,
+        )
     )
     project_skill_path = target_skills_dir / name
 

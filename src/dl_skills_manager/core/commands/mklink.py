@@ -8,7 +8,10 @@ from dl_skills_manager.core.commands._options import (
     reject_global_with_project,
     target_options,
 )
-from dl_skills_manager.core.commands.targets import resolve_command_target_dir
+from dl_skills_manager.core.commands.targets import (
+    ensure_target_dir,
+    resolve_command_target_dir,
+)
 from dl_skills_manager.core.linker import create_link
 from dl_skills_manager.core.store import is_skill_dir, validate_skill_name
 
@@ -43,8 +46,10 @@ def link_skills(
         ValidationError: Invalid prefixed name or unknown agent.
         LinkError: Symlink/copy failure.
     """
-    target_dir = resolve_command_target_dir(
-        is_global=is_global, project=project, agent=agent
+    target_dir = ensure_target_dir(
+        resolve_command_target_dir(
+            is_global=is_global, project=project, agent=agent
+        )
     )
 
     linked: list[str] = []

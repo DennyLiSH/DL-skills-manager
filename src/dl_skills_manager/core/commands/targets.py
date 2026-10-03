@@ -1,4 +1,10 @@
-"""Target skills directory resolution for CLI commands."""
+"""Target skills directory resolution for CLI commands.
+
+resolve_command_target_dir is a pure query (creates nothing);
+ensure_target_dir expresses the "ready to write into" contract.
+Write-path commands (install/update/mklink) chain both; read-path
+commands (remove) resolve only.
+"""
 
 from collections.abc import Mapping
 from pathlib import Path
@@ -6,7 +12,7 @@ from pathlib import Path
 from dl_skills_manager.core.agents import AgentDirOverride, resolve_agent_dirs
 from dl_skills_manager.core.exceptions import ValidationError
 
-__all__ = ["resolve_command_target_dir"]
+__all__ = ["ensure_target_dir", "resolve_command_target_dir"]
 
 
 def resolve_command_target_dir(
@@ -18,9 +24,8 @@ def resolve_command_target_dir(
 ) -> Path:
     """Resolve the target skills directory for a command invocation.
 
-    Single entry point for install/update/remove/mklink target
-    resolution: agent registry lookup, [agents] config overrides,
-    scope validation, and target dir creation.
+    Pure query: agent registry lookup, [agents] config overrides,
+    and scope validation. Creates nothing on disk.
 
     Args:
         is_global: If True, resolve the agent's global skills dir
@@ -31,7 +36,7 @@ def resolve_command_target_dir(
             resolution (used by mklink).
 
     Returns:
-        Resolved target skills directory path (created if missing).
+        Resolved target skills directory path (not created).
 
     Raises:
         ValidationError: Unknown agent, agent without the requested
@@ -45,22 +50,23 @@ def resolve_command_target_dir(
                 f"agent '{agent}' does not define a global skills directory"
             )
         # Resolve "~"-prefixed values through Path.home() instead of
-        # expanduser(): expanduser() reads the USERPROFILE env var and
-        # bypasses the Path.home seam that tests patch. Path.home() must
-        # stay in this function for the same reason.
+        # expanduser(): Path.home() is the single documented home seam
+        # (CLAUDE.md); expanduser() would drift to env-var-dependent
+        # resolution instead of the seam that tests patch.
         if global_dir.startswith("~"):
             rel = global_dir[1:].lstrip("/\\")
-            target = Path.home() / rel
-        else:
-            candidate = Path(global_dir)
-            target = candidate if candidate.is_absolute() else Path.home() / candidate
-    else:
-        if project_dir is None:
-            raise ValidationError(
-                f"agent '{agent}' does not support project-level installation; "
-                f"use --global"
-            )
-        target = Path(project).resolve() / project_dir
+            return Path.home() / rel
+        candidate = Path(global_dir)
+        return candidate if candidate.is_absolute() else Path.home() / candidate
+    if project_dir is None:
+        raise ValidationError(
+            f"agent '{agent}' does not support project-level installation; "
+            f"use --global"
+        )
+    return Path(project).resolve() / project_dir
 
-    target.mkdir(parents=True, exist_ok=True)
-    return target
+
+def ensure_target_dir(target_skills_dir: Path) -> Path:
+    """Create the target skills directory (idempotent) and return it."""
+    target_skills_dir.mkdir(parents=True, exist_ok=True)
+    return target_skills_dir
