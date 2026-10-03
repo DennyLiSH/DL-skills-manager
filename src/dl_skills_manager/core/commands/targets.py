@@ -60,8 +60,7 @@ def resolve_command_target_dir(
         return candidate if candidate.is_absolute() else Path.home() / candidate
     if project_dir is None:
         raise ValidationError(
-            f"agent '{agent}' does not support project-level installation; "
-            f"use --global"
+            f"agent '{agent}' does not support project-level installation; use --global"
         )
     return Path(project).resolve() / project_dir
 

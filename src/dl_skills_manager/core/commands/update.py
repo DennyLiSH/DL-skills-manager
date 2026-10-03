@@ -136,9 +136,7 @@ def update_skill_copy(
         try:
             shutil.rmtree(backup_path)
         except OSError as e:
-            raise WriteError(
-                f"Failed to clean up backup of '{name}': {e}"
-            ) from e
+            raise WriteError(f"Failed to clean up backup of '{name}': {e}") from e
     return project_skill_path
 
 

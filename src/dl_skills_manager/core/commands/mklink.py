@@ -47,9 +47,7 @@ def link_skills(
         LinkError: Symlink/copy failure.
     """
     target_dir = ensure_target_dir(
-        resolve_command_target_dir(
-            is_global=is_global, project=project, agent=agent
-        )
+        resolve_command_target_dir(is_global=is_global, project=project, agent=agent)
     )
 
     linked: list[str] = []

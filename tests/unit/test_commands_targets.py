@@ -28,9 +28,7 @@ class TestResolveCommandTargetDir:
         assert not result.exists()
 
     def test_agent_global(self, fake_home: Path) -> None:
-        result = resolve_command_target_dir(
-            is_global=True, project=".", agent="codex"
-        )
+        result = resolve_command_target_dir(is_global=True, project=".", agent="codex")
         assert result == fake_home / ".agents" / "skills"
         assert not result.exists()
 
