@@ -51,6 +51,7 @@ def _handle_app_errors(cmd: click.Command) -> click.Command:
 
 
 @click.group()
+@click.version_option(package_name="dl-skills-manager", prog_name="skill-sync")
 def main() -> None:
     """DL Skills Manager - Claude Code Skills Repository Manager.
 
