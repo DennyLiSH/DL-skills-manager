@@ -8,7 +8,7 @@ from pathlib import Path
 import click
 import tomli_w
 
-from dl_skills_manager.core.config import LinkMode, get_default_repo_path
+from dl_skills_manager.core.config import get_default_repo_path
 from dl_skills_manager.core.exceptions import (
     ConfigError,
     RepoAlreadyExistsError,
@@ -27,19 +27,13 @@ class InitResult:
 def init_repo(
     *,
     skills_path: str | None,
-    link_mode: LinkMode,
     repo_path: Path,
 ) -> InitResult:
     """Create the repository directory structure and config.toml.
 
-    The interactive link-mode prompt stays in the CLI adapter; this
-    core never prompts.
-
     Args:
         skills_path: Custom skills storage root, or None for the
             default {repo_path}/data.
-        link_mode: Resolved link mode (adapter has already prompted
-            when the CLI option was omitted).
         repo_path: Repository config directory (~/.skill-sync).
 
     Returns:
@@ -75,9 +69,6 @@ def init_repo(
             "path": str(repo_path),
             "skills_store": str(skills_storage_path),
         },
-        "settings": {
-            "default_link_mode": link_mode,
-        },
     }
 
     try:
@@ -96,35 +87,20 @@ def init_repo(
     default=None,
     help="Path to skills storage root (default: ~/.skill-sync/data/)",
 )
-@click.option(
-    "--link-mode",
-    type=click.Choice(["symlink", "copy"]),
-    default=None,
-    help="Default link mode for skill installation (will prompt if not specified).",
-)
-def init(skills_path: str | None, link_mode: LinkMode | None) -> None:
+def init(skills_path: str | None) -> None:
     """Initialize a new skills repository.
 
     Creates the config directory at ~/.skill-sync/ and skills storage directory.
-    Default link mode is 'copy' for cross-device compatibility.
+    Skills are installed as copies by default (see ADR 0001); use
+    install --link-mode symlink per invocation when needed.
     """
     repo_path = get_default_repo_path()
 
-    # Check before prompting so an existing repo errors without
-    # asking the user anything (interaction ordering = adapter concern).
+    # Check before any work so an existing repo errors immediately.
     if (repo_path / "config.toml").exists():
         raise RepoAlreadyExistsError(f"Repository already initialized at {repo_path}")
 
-    if link_mode is None:
-        link_mode = click.prompt(
-            "Default installation mode",
-            type=click.Choice(["symlink", "copy"]),
-            default="copy",
-        )
-
-    result = init_repo(
-        skills_path=skills_path, link_mode=link_mode, repo_path=repo_path
-    )
+    result = init_repo(skills_path=skills_path, repo_path=repo_path)
 
     click.echo(f"Initialized config at: {result.repo_path}")
     click.echo(f"Skills storage at: {result.skills_store}")

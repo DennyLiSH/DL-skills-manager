@@ -28,7 +28,6 @@ def skills_repo_dir(tmp_path: Path) -> Path:
         tomli_w.dump(
             {
                 "basic": {"path": str(config_dir), "skills_store": str(data_dir)},
-                "settings": {"default_link_mode": "copy", "fallback_to_copy": True},
             },
             f,
         )
@@ -75,7 +74,6 @@ def repo_home(fake_home: Path) -> Path:
         tomli_w.dump(
             {
                 "basic": {"path": str(repo), "skills_store": str(data)},
-                "settings": {"default_link_mode": "copy"},
             },
             f,
         )

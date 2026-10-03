@@ -19,7 +19,7 @@ class TestInitRepoCore:
     def test_creates_default_layout(self, tmp_path: Path) -> None:
         repo = tmp_path / ".skill-sync"
 
-        result = init_repo(skills_path=None, link_mode="copy", repo_path=repo)
+        result = init_repo(skills_path=None, repo_path=repo)
 
         assert isinstance(result, InitResult)
         assert (repo / "config.toml").exists()
@@ -34,7 +34,6 @@ class TestInitRepoCore:
 
         result = init_repo(
             skills_path=str(custom),
-            link_mode="copy",
             repo_path=tmp_path / ".skill-sync",
         )
 
@@ -44,10 +43,10 @@ class TestInitRepoCore:
 
     def test_already_initialized_raises(self, tmp_path: Path) -> None:
         repo = tmp_path / ".skill-sync"
-        init_repo(skills_path=None, link_mode="copy", repo_path=repo)
+        init_repo(skills_path=None, repo_path=repo)
 
         with pytest.raises(RepoAlreadyExistsError, match="already initialized"):
-            init_repo(skills_path=None, link_mode="copy", repo_path=repo)
+            init_repo(skills_path=None, repo_path=repo)
 
 
 class TestInitCommand:
@@ -60,7 +59,7 @@ class TestInitCommand:
 
         result = cli_runner.invoke(
             main,
-            ["init", "--skills-path", str(fake_home / "skills"), "--link-mode", "copy"],
+            ["init", "--skills-path", str(fake_home / "skills")],
         )
 
         assert result.exit_code == 0, result.output
@@ -75,8 +74,6 @@ class TestInitCommand:
                 "init",
                 "--skills-path",
                 str(fake_home / "custom-skills"),
-                "--link-mode",
-                "copy",
             ],
         )
 
@@ -99,49 +96,3 @@ class TestInitCommand:
         result = cli_runner.invoke(main, ["init", "--help"])
         assert result.exit_code == 0
         assert "--skills-path" in result.output
-
-
-class TestInitLinkMode:
-    """init link-mode prompt behavior (via fake_home)."""
-
-    def test_init_prompts_when_link_mode_not_specified(
-        self, cli_runner: CliRunner, fake_home: Path
-    ) -> None:
-        result = cli_runner.invoke(
-            main,
-            ["init", "--skills-path", str(fake_home / "skills")],
-            input="copy\n",
-        )
-
-        assert result.exit_code == 0, result.output
-        assert "Default installation mode" in result.output
-
-    def test_init_accepts_default_copy_via_prompt(
-        self, cli_runner: CliRunner, fake_home: Path
-    ) -> None:
-        result = cli_runner.invoke(
-            main,
-            ["init", "--skills-path", str(fake_home / "skills")],
-            input="\n",
-        )
-
-        assert result.exit_code == 0, result.output
-        assert "copy" in (fake_home / ".skill-sync" / "config.toml").read_text()
-
-    def test_init_link_mode_option_skips_prompt(
-        self, cli_runner: CliRunner, fake_home: Path
-    ) -> None:
-        result = cli_runner.invoke(
-            main,
-            [
-                "init",
-                "--skills-path",
-                str(fake_home / "skills"),
-                "--link-mode",
-                "symlink",
-            ],
-        )
-
-        assert result.exit_code == 0, result.output
-        assert "Default installation mode" not in result.output
-        assert "symlink" in (fake_home / ".skill-sync" / "config.toml").read_text()

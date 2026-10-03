@@ -8,6 +8,7 @@ __all__ = [
     "load_config",
 ]
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from tomllib import TOMLDecodeError
@@ -19,6 +20,8 @@ from dl_skills_manager.core.exceptions import ConfigError
 
 type LinkMode = Literal["symlink", "copy"]
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(slots=True)
 class SkillSyncConfig:
@@ -26,7 +29,6 @@ class SkillSyncConfig:
 
     path: Path
     skills_store: Path
-    default_link_mode: LinkMode
     agent_dirs: dict[str, AgentDirOverride] = field(default_factory=dict)
 
 
@@ -64,12 +66,12 @@ def load_config() -> SkillSyncConfig:
 
     basic_data = data.get("basic", {})
     settings_data = data.get("settings", {})
-
-    default_link_mode = settings_data.get("default_link_mode", "copy")
-    if default_link_mode not in ("symlink", "copy"):
-        raise ConfigError(
-            f"Invalid default_link_mode '{default_link_mode}' in config.toml. "
-            "Must be 'symlink' or 'copy'."
+    if "default_link_mode" in settings_data:
+        logger.warning(
+            "config.toml [settings] default_link_mode "
+            f"({settings_data['default_link_mode']!r}) is no longer used; "
+            "install always defaults to copy (override per-invocation "
+            "with --link-mode)"
         )
 
     # Load skills_store from config, default to ~/.skill-sync/skills/
@@ -104,6 +106,5 @@ def load_config() -> SkillSyncConfig:
     return SkillSyncConfig(
         path=path,
         skills_store=skills_store,
-        default_link_mode=default_link_mode,
         agent_dirs=agent_dirs,
     )

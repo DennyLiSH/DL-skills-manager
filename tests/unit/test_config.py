@@ -1,5 +1,6 @@
 """Tests for config module."""
 
+import logging
 from pathlib import Path
 from unittest.mock import patch
 
@@ -64,9 +65,6 @@ class TestLoadConfig:
             """[basic]
 path = "~/.skill-sync"
 skills_store = "/tmp/skills"
-
-[settings]
-default_link_mode = "copy"
 """
         )
 
@@ -78,7 +76,6 @@ default_link_mode = "copy"
 
         assert config.path == Path.home() / ".skill-sync"
         assert config.skills_store == Path("/tmp/skills")  # noqa: S108
-        assert config.default_link_mode == "copy"
 
     def test_uses_defaults_for_missing_fields(self, tmp_path: Path) -> None:
         """Test defaults are used when fields are missing."""
@@ -97,33 +94,9 @@ skills_store = "/custom/skills"
         ):
             config = load_config()
 
-        assert config.default_link_mode == "copy"
         # path defaults to repo_path
         assert config.path == repo_path
         assert config.skills_store == Path("/custom/skills")
-
-    def test_raises_error_for_invalid_link_mode(self, tmp_path: Path) -> None:
-        """Test ConfigError when default_link_mode is invalid."""
-        repo_path = tmp_path / ".skill-sync"
-        repo_path.mkdir()
-        config_path = repo_path / "config.toml"
-        config_path.write_text(
-            """[basic]
-skills_store = "/tmp/skills"
-
-[settings]
-default_link_mode = "invalid"
-"""
-        )
-
-        with (
-            patch(
-                "dl_skills_manager.core.config.get_default_repo_path",
-                return_value=repo_path,
-            ),
-            pytest.raises(ConfigError, match="default_link_mode"),
-        ):
-            load_config()
 
 
 class TestAgentDirsParsing:
@@ -135,10 +108,7 @@ class TestAgentDirsParsing:
         (repo_path / "config.toml").write_text(
             "[basic]\n"
             "path = '~/.skill-sync'\n"
-            "skills_store = '/tmp/skills'\n"
-            "\n"
-            "[settings]\n"
-            "default_link_mode = 'copy'\n" + extra
+            "skills_store = '/tmp/skills'\n" + extra
         )
 
     def _load(self, tmp_path: Path) -> SkillSyncConfig:
@@ -184,3 +154,47 @@ class TestAgentDirsParsing:
         self._write_config(tmp_path, "\n[agents.codex]\nproject_dir = true\n")
         with pytest.raises(ConfigError, match="project_dir must be a string"):
             self._load(tmp_path)
+
+
+class TestLegacyDefaultLinkModeWarning:
+    """A leftover [settings] default_link_mode key warns, does not error."""
+
+    def test_legacy_key_warns(
+        self, fake_home: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        repo = fake_home / ".skill-sync"
+        repo.mkdir()
+        (repo / "config.toml").write_text(
+            '[basic]\nskills_store = "/tmp/skills"\n\n'
+            '[settings]\ndefault_link_mode = "symlink"\n'
+        )
+
+        with (
+            patch(
+                "dl_skills_manager.core.config.get_default_repo_path",
+                return_value=repo,
+            ),
+            caplog.at_level(logging.WARNING, logger="dl_skills_manager.core.config"),
+        ):
+            config = load_config()
+
+        assert config.skills_store == Path("/tmp/skills")  # noqa: S108
+        assert "no longer used" in caplog.text
+
+    def test_no_settings_key_no_warning(
+        self, fake_home: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        repo = fake_home / ".skill-sync"
+        repo.mkdir()
+        (repo / "config.toml").write_text('[basic]\nskills_store = "/tmp/skills"\n')
+
+        with (
+            patch(
+                "dl_skills_manager.core.config.get_default_repo_path",
+                return_value=repo,
+            ),
+            caplog.at_level(logging.WARNING, logger="dl_skills_manager.core.config"),
+        ):
+            load_config()
+
+        assert "no longer used" not in caplog.text

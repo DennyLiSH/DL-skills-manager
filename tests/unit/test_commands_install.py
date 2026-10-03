@@ -186,28 +186,6 @@ class TestInstallSkillCore:
             )
         assert not (fake_home / "test-skill").exists()
 
-    def test_install_ignores_config_default_link_mode_symlink(
-        self, repo_with_skill: Path, project_dir: Path
-    ) -> None:
-        """install must NOT honor config.default_link_mode; copy is always the default.
-
-        Regression guard: the only test preventing install from re-reading
-        config.default_link_mode (ADR 0001). Do not delete or weaken.
-        Real-filesystem assertion — no create_link mocking involved.
-        """
-        config = mock_config(repo_with_skill, default_link_mode="symlink")
-        dest = install_skill(
-            "test-skill",
-            version=None,
-            is_global=False,
-            project=str(project_dir),
-            link_mode="copy",
-            agent="claude",
-            config=config,
-        )
-        assert dest.is_dir()
-        assert not dest.is_symlink()
-
     def test_install_link_mode_symlink_override(
         self, repo_with_skill: Path, project_dir: Path
     ) -> None:
@@ -216,14 +194,14 @@ class TestInstallSkillCore:
         dest = _install(repo_with_skill, project=str(project_dir), link_mode="symlink")
         assert (dest / "SKILL.md").read_text() == "# Test Skill\n"
 
-    def test_install_link_mode_copy_override_replaces_symlink_config(
+    def test_install_link_mode_copy_override_replaces_existing(
         self, repo_with_skill: Path, project_dir: Path
     ) -> None:
         existing = project_dir / ".claude" / "skills" / "test-skill"
         existing.mkdir(parents=True)
         (existing / "SKILL.md").write_text("# Old Version\n")
 
-        config = mock_config(repo_with_skill, default_link_mode="symlink")
+        config = mock_config(repo_with_skill)
         dest = install_skill(
             "test-skill",
             version=None,
